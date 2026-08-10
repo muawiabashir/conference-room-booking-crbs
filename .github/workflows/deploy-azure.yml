@@ -1,0 +1,38 @@
+name: Deploy to Azure App Service
+
+# Runs on every push to main. Requires two repository secrets, set once in
+# GitHub: Settings -> Secrets and variables -> Actions -> New repository secret
+#   AZURE_WEBAPP_NAME        the App Service name from provision.sh (APP_NAME)
+#   AZURE_WEBAPP_PUBLISH_PROFILE   XML from:
+#     az webapp deployment list-publishing-profiles -g <resource-group> \
+#         -n <app-name> --xml
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies and sanity-check the app imports
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          python -c "import app.main"
+
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: .

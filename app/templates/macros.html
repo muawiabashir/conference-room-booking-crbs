@@ -1,0 +1,78 @@
+{# Reusable UI primitives. SVG icons only (Lucide-style) — never emoji. #}
+
+{% macro icon(name, size=16) -%}
+{%- set paths = {
+  'grid':      '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>',
+  'calendar':  '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  'list':      '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  'door':      '<path d="M13 4h3a2 2 0 0 1 2 2v14M2 20h20M13 2v20H6a1 1 0 0 1-1-1V4a2 2 0 0 1 1.6-2z"/><circle cx="10" cy="12" r="1"/>',
+  'building':  '<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M16 6h.01M8 10h.01M16 10h.01M8 14h.01M16 14h.01"/>',
+  'tag':       '<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r="1"/>',
+  'receipt':   '<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"/><path d="M8 7h8M8 11h8M8 15h5"/>',
+  'chart':     '<path d="M3 3v18h18"/><path d="M7 16v-5M12 16V8M17 16v-3"/>',
+  'users':     '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/>',
+  'shield':    '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/>',
+  'scale':     '<path d="M12 3v18M8 21h8M3 7h18M6 7l-3 6h6zM18 7l-3 6h6z"/>',
+  'plus':      '<path d="M12 5v14M5 12h14"/>',
+  'check':     '<path d="M20 6 9 17l-5-5"/>',
+  'x':         '<path d="M18 6 6 18M6 6l12 12"/>',
+  'clock':     '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  'download':  '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>',
+  'alert':     '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/>',
+  'arrow-left':'<path d="M19 12H5M12 19l-7-7 7-7"/>',
+} -%}
+<svg width="{{ size }}" height="{{ size }}" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+     class="shrink-0">{{ paths.get(name, paths['grid'])|safe }}</svg>
+{%- endmacro %}
+
+{% macro badge(value) -%}
+<span class="badge badge-{{ value }}">{{ value|title }}</span>
+{%- endmacro %}
+
+{% macro kpi(label, value, sub='', accent='var(--undp-blue)') -%}
+<div class="card p-4" style="border-top:3px solid {{ accent }}">
+  <div class="kpi-label">{{ label }}</div>
+  <div class="kpi-value num mt-1" style="color:var(--undp-blue-dark)">{{ value }}</div>
+  {% if sub %}<div class="text-[11.5px] mt-1" style="color:var(--undp-gray-500)">{{ sub }}</div>{% endif %}
+</div>
+{%- endmacro %}
+
+{% macro field(name, label, value='', type='text', required=False, hint='', error='', attrs='') -%}
+<div>
+  <label class="field-label {% if required %}required{% endif %}" for="f-{{ name }}">{{ label }}</label>
+  <input class="input" id="f-{{ name }}" name="{{ name }}" type="{{ type }}"
+         value="{{ value if value is not none else '' }}"
+         {% if required %}required{% endif %}
+         {% if error %}aria-invalid="true" aria-describedby="e-{{ name }}"{% elif hint %}aria-describedby="h-{{ name }}"{% endif %}
+         {{ attrs|safe }}>
+  {% if error %}<p class="field-hint" id="e-{{ name }}" role="alert" style="color:var(--undp-red)">{{ error }}</p>
+  {% elif hint %}<p class="field-hint" id="h-{{ name }}">{{ hint }}</p>{% endif %}
+</div>
+{%- endmacro %}
+
+{% macro select(name, label, options, selected=None, required=False, hint='', blank=None) -%}
+<div>
+  <label class="field-label {% if required %}required{% endif %}" for="f-{{ name }}">{{ label }}</label>
+  <select class="input" id="f-{{ name }}" name="{{ name }}" {% if required %}required{% endif %}
+          {% if hint %}aria-describedby="h-{{ name }}"{% endif %}>
+    {% if blank is not none %}<option value="">{{ blank }}</option>{% endif %}
+    {% for val, text in options %}
+      <option value="{{ val }}" {% if selected is not none and val|string == selected|string %}selected{% endif %}>{{ text }}</option>
+    {% endfor %}
+  </select>
+  {% if hint %}<p class="field-hint" id="h-{{ name }}">{{ hint }}</p>{% endif %}
+</div>
+{%- endmacro %}
+
+{% macro empty(message, action_url='', action_label='') -%}
+<div class="empty-state">
+  <div class="flex justify-center mb-2" style="color:var(--undp-gray-300)">{{ icon('list', 28) }}</div>
+  <p class="text-[13px]">{{ message }}</p>
+  {% if action_url %}<a href="{{ action_url }}" class="btn btn-primary btn-sm mt-3">{{ action_label }}</a>{% endif %}
+</div>
+{%- endmacro %}
+
+{% macro money(amount, currency='USD') -%}
+<span class="num">{{ currency }} {{ '{:,.2f}'.format(amount or 0) }}</span>
+{%- endmacro %}

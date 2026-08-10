@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% set editing = booking is not none %}
+{% block title %}{{ 'Amend booking' if editing else 'New booking' }}{% endblock %}
+{% block heading %}{{ 'Amend ' ~ booking.reference if editing else 'New booking request' }}{% endblock %}
+{% block subheading %}Charges are estimated live and frozen when you submit.{% endblock %}
+
+{% macro val(name, fallback='') -%}
+{{ form.get(name) if form.get(name) is not none else fallback }}
+{%- endmacro %}
+
+{% block content %}
+{% if errors %}
+  <div class="alert alert-error" role="alert">
+    <strong>This request could not be saved:</strong>
+    <ul class="list-disc ml-5 mt-1.5 space-y-0.5">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  </div>
+{% endif %}
+
+<form method="post" id="booking-form"
+      action="{{ '/bookings/%d/edit'|format(booking.id) if editing else '/bookings/new' }}"
+      class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+  {% if editing %}<input type="hidden" name="booking_id" value="{{ booking.id }}">{% endif %}
+
+  <div class="xl:col-span-2 space-y-5">
+
+    <section class="card">
+      <div class="card-head"><h2 class="card-title">1 · Meeting details</h2></div>
+      <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="sm:col-span-2">
+          <label class="field-label required" for="f-title">Meeting title</label>
+          <input class="input" id="f-title" name="title" required maxlength="200"
+                 value="{{ val('title', booking.title if editing else '') }}"
+                 placeholder="e.g. UNCT Programme Coordination Meeting">
+        </div>
+        <div class="sm:col-span-2">
+          <label class="field-label" for="f-purpose">Purpose / agenda</label>
+          <textarea class="input" id="f-purpose" name="purpose" rows="2"
+                    placeholder="Brief description, used for utilisation reporting">{{ val('purpose', booking.purpose if editing else '') }}</textarea>
+        </div>
+        <div>
+          <label class="field-label required" for="f-organization_id">Counterpart to be charged</label>
+          <select class="input" id="f-organization_id" name="organization_id" required>
+            <option value="">Select a counterpart…</option>
+            {% for o in orgs %}
+              <option value="{{ o.id }}"
+                {% if val('organization_id', booking.organization_id if editing else '')|string == o.id|string %}selected{% endif %}>
+                {{ o.name }} ({{ o.type_label }})
+              </option>
+            {% endfor %}
+          </select>
+          <p class="field-hint">Determines the rate card, management fee and the account charged.</p>
+        </div>
+        <div>
+          <label class="field-label required" for="f-attendees">Expected attendees</label>
+          <input class="input" id="f-attendees" name="attendees" type="number" min="1" required
+                 value="{{ val('attendees', booking.attendees if editing else 10) }}">
+          <p class="field-hint">Validated against room capacity.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2 class="card-title">2 · Room and time</h2></div>
+      <div class="p-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="sm:col-span-3">
+          <label class="field-label required" for="f-room_id">Room</label>
+          <select class="input" id="f-room_id" name="room_id" required>
+            <option value="">Select a room…</option>
+            {% for r in rooms %}
+              <option value="{{ r.id }}"
+                {% if val('room_id', booking.room_id if editing else '')|string == r.id|string %}selected{% endif %}>
+                {{ r.name }} — {{ r.capacity }} seats, {{ r.location }}
+                ({{ currency }} {{ '{:,.0f}'.format(r.rate_hourly) }}/h · {{ '{:,.0f}'.format(r.rate_full_day) }}/day)
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="field-label required" for="f-starts_at">Start</label>
+          <input class="input" id="f-starts_at" name="starts_at" type="datetime-local" required
+                 value="{{ val('starts_at', booking.starts_at.strftime('%Y-%m-%dT%H:%M') if editing else '') }}">
+        </div>
+        <div>
+          <label class="field-label required" for="f-ends_at">End</label>
+          <input class="input" id="f-ends_at" name="ends_at" type="datetime-local" required
+                 value="{{ val('ends_at', booking.ends_at.strftime('%Y-%m-%dT%H:%M') if editing else '') }}">
+        </div>
+        <div class="flex items-end">
+          <p class="field-hint">Maximum 12 hours. A 15-minute set-up gap is enforced either side.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title">3 · Chargeable services</h2>
+        <span class="text-[11.5px]" style="color:var(--undp-gray-500)">Leave at zero if not required</span>
+      </div>
+      <div class="p-4 space-y-4">
+        {% set ns = namespace(current='') %}
+        {% for item in services %}
+          {% if item.category != ns.current %}
+            {% set ns.current = item.category %}
+            <div class="kpi-label pt-1">{{ item.category }}</div>
+          {% endif %}
+          <div class="grid grid-cols-[1fr_auto] gap-3 items-center">
+            <label class="text-[13px]" for="svc-{{ item.id }}">
+              {{ item.name }}
+              <span style="color:var(--undp-gray-500)">— {{ currency }} {{ '{:,.2f}'.format(item.unit_price) }} per {{ item.unit }}</span>
+            </label>
+            <input class="input num text-right" style="width:110px" type="number" min="0" step="0.5"
+                   id="svc-{{ item.id }}" name="svc_qty_{{ item.id }}"
+                   value="{{ selected_services.get(item.id, 0) }}"
+                   aria-label="Quantity of {{ item.name }} in {{ item.unit }}">
+          </div>
+        {% else %}
+          {{ ui.empty('No chargeable services configured.') }}
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+
+  <!-- Live estimate -->
+  <div class="xl:col-span-1">
+    <section class="card sticky top-5">
+      <div class="card-head">
+        <h2 class="card-title">Cost recovery estimate</h2>
+        <button type="button" id="recalc" class="btn btn-secondary btn-sm">Recalculate</button>
+      </div>
+      <div class="p-4" id="estimate" aria-live="polite">
+        <p class="text-[12.5px]" style="color:var(--undp-gray-500)">
+          Choose a counterpart, room and time range to see the estimated charge.
+        </p>
+      </div>
+      <div class="p-4 border-t space-y-2" style="border-color:var(--undp-gray-200)">
+        <button type="submit" class="btn btn-primary w-full">
+          {{ ui.icon('check') }} {{ 'Save changes' if editing else 'Submit for approval' }}
+        </button>
+        <a href="{{ '/bookings/%d'|format(booking.id) if editing else '/bookings' }}"
+           class="btn btn-secondary w-full">Cancel</a>
+        <p class="text-[11px] pt-1" style="color:var(--undp-gray-500)">
+          The estimate becomes the recorded charge on submission and is unaffected by later
+          rate-card changes.
+        </p>
+      </div>
+    </section>
+  </div>
+</form>
+
+<script>
+(function () {
+  var form = document.getElementById('booking-form');
+  var box = document.getElementById('estimate');
+  var timer = null;
+
+  function money(v) { return '{{ currency }} ' + v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+
+  function render(data) {
+    if (!data.ok) {
+      box.innerHTML = '<p class="text-[12.5px]" style="color:var(--undp-gray-500)">' + data.message + '</p>';
+      return;
+    }
+    var html = '';
+    if (data.conflict) {
+      html += '<div class="alert alert-error mb-3" role="alert">Clash with booking ' + data.conflict +
+              ' in this room. Choose another slot or room.</div>';
+    }
+    html += '<p class="text-[11.5px] mb-3" style="color:var(--undp-gray-500)">' +
+            data.hours.toFixed(2) + ' h · billed on the <strong>' + data.basis +
+            '</strong> tier · ' + data.policy + ' policy</p>';
+    html += '<dl class="space-y-2">';
+    data.lines.forEach(function (l) {
+      html += '<div class="flex justify-between gap-3 text-[12.5px]">' +
+              '<dt><span class="font-semibold">' + l.label + '</span>' +
+              '<br><span style="color:var(--undp-gray-500)">' + l.detail + '</span></dt>' +
+              '<dd class="num shrink-0 font-semibold">' + money(l.amount) + '</dd></div>';
+    });
+    html += '</dl>';
+    html += '<div class="flex justify-between items-baseline mt-4 pt-3 border-t" style="border-color:var(--undp-gray-300)">' +
+            '<span class="kpi-label">Total to recover</span>' +
+            '<span class="kpi-value num" style="color:var(--undp-blue-dark)">' + money(data.total) + '</span></div>';
+    box.innerHTML = html;
+  }
+
+  function refresh() {
+    var room = form.querySelector('#f-room_id').value;
+    var org = form.querySelector('#f-organization_id').value;
+    var starts = form.querySelector('#f-starts_at').value;
+    var ends = form.querySelector('#f-ends_at').value;
+    if (!room || !org || !starts || !ends) { return; }
+    fetch('/api/quote', { method: 'POST', body: new FormData(form) })
+      .then(function (r) { return r.json(); })
+      .then(render)
+      .catch(function () {
+        box.innerHTML = '<p class="text-[12.5px]" style="color:var(--undp-red)">Estimate unavailable. The charge will still be calculated on submission.</p>';
+      });
+  }
+
+  function debounced() { clearTimeout(timer); timer = setTimeout(refresh, 350); }
+
+  form.addEventListener('change', debounced);
+  form.addEventListener('input', debounced);
+  document.getElementById('recalc').addEventListener('click', refresh);
+  refresh();
+})();
+</script>
+{% endblock %}

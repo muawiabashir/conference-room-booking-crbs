@@ -1,0 +1,45 @@
+# Install to /etc/systemd/system/crbs.service
+#   sudo systemctl daemon-reload && sudo systemctl enable --now crbs
+[Unit]
+Description=Conference Room Booking & Cost Recovery System
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+User=crbs
+Group=crbs
+WorkingDirectory=/opt/crbs
+
+Environment=CRBS_ENV=production
+Environment=CRBS_ORG_NAME=UNDP Country Office
+Environment=CRBS_DUTY_STATION=Khartoum, Sudan
+Environment=CRBS_CURRENCY=USD
+Environment=CRBS_TZ_LABEL=EAT (UTC+2)
+
+# Holds CRBS_SECRET_KEY and CRBS_DATABASE_URL (the connection string contains the
+# database password, so this file must be root-owned, chmod 0600):
+#   CRBS_SECRET_KEY=...
+#   CRBS_DATABASE_URL=postgresql+psycopg://crbs:PASSWORD@127.0.0.1:5432/crbs
+EnvironmentFile=/etc/crbs.env
+
+# On PostgreSQL multiple workers are safe. Rule of thumb: 2 x CPU cores + 1,
+# kept below the server's max_connections.
+ExecStart=/opt/crbs/.venv/bin/gunicorn app.main:app \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --workers 4 \
+    --bind 127.0.0.1:8000 \
+    --forwarded-allow-ips 127.0.0.1 \
+    --access-logfile - \
+    --error-logfile -
+
+Restart=always
+RestartSec=5
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/crbs
+
+[Install]
+WantedBy=multi-user.target

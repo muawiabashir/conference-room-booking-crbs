@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Access Matrix{% endblock %}
+{% block heading %}Access Control Matrix{% endblock %}
+{% block subheading %}The authoritative mapping of permissions to roles, enforced server-side on every request{% endblock %}
+
+{% block content %}
+<div class="alert alert-info">
+  This matrix is enforced in code, not in the interface. Hidden buttons are a convenience only —
+  every route re-checks the permission and records denials in the audit trail.
+</div>
+
+<section class="card overflow-x-auto">
+  <div class="card-head"><h2 class="card-title">Permissions by role</h2></div>
+  <table class="data">
+    <thead>
+      <tr>
+        <th scope="col" style="min-width:280px">Permission</th>
+        {% for r in roles %}<th scope="col" class="text-center" style="min-width:96px">{{ r.label }}</th>{% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in matrix %}
+        <tr>
+          <th scope="row" class="text-left font-normal px-4 py-2.5 border-b"
+              style="border-color:var(--undp-gray-200)">
+            <div class="font-semibold num text-[12px]">{{ row.permission }}</div>
+            <div class="text-[11.5px]" style="color:var(--undp-gray-500)">{{ row.description }}</div>
+          </th>
+          {% for r in roles %}
+            <td class="text-center">
+              {% if row.allowed[r] %}
+                <span class="inline-flex" style="color:var(--undp-green-dark)"
+                      title="{{ r.label }} may {{ row.description|lower }}">{{ ui.icon('check', 16) }}</span>
+                <span class="sr-only">Allowed</span>
+              {% else %}
+                <span style="color:var(--undp-gray-300)" aria-hidden="true">—</span>
+                <span class="sr-only">Not allowed</span>
+              {% endif %}
+            </td>
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <div class="card-head"><h2 class="card-title">Governance controls in force</h2></div>
+  <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 text-[13px]">
+    <div><strong>Row-level scoping.</strong> Agency focal points and requesters are bound to a
+      single counterpart and cannot read or act on another's bookings or invoices.</div>
+    <div><strong>Segregation of duties.</strong> The role that approves bookings cannot grant
+      waivers; waivers sit with finance. Neither can create user accounts.</div>
+    <div><strong>Immutable charge snapshot.</strong> Charges are frozen on submission, so later
+      rate-card edits cannot rewrite issued invoices.</div>
+    <div><strong>Account protection.</strong> Passwords are hashed with PBKDF2-SHA256; accounts
+      lock for 15 minutes after 5 failed attempts and admin-issued passwords must be changed.</div>
+    <div><strong>Mandatory justification.</strong> Waivers require written justification recorded
+      against the approving officer.</div>
+    <div><strong>Full audit trail.</strong> Sign-ins, denials, approvals, waivers, rate changes and
+      invoice transitions are all written to an append-only log.</div>
+  </div>
+</section>
+{% endblock %}

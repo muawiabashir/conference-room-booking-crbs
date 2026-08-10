@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}{{ invoice.number }}{% endblock %}
+{% block heading %}Invoice {{ invoice.number }}{% endblock %}
+{% block subheading %}{{ invoice.organization.name }} · {{ invoice.period_start.strftime('%B %Y') }}{% endblock %}
+{% block header_actions %}
+  <div class="flex items-center gap-2">
+    {{ ui.badge(invoice.status.value) }}
+    <button type="button" onclick="window.print()" class="btn btn-secondary btn-sm">Print</button>
+    <a href="/invoices" class="btn btn-secondary btn-sm">{{ ui.icon('arrow-left', 14) }} All invoices</a>
+  </div>
+{% endblock %}
+
+{% block content %}
+<section class="card">
+  <div class="undp-accent-rule"></div>
+  <div class="p-6">
+    <div class="flex flex-wrap justify-between gap-6 pb-6 border-b" style="border-color:var(--undp-gray-200)">
+      <div>
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 flex items-center justify-center" style="background:var(--undp-blue)">
+            <span class="text-white font-extrabold text-[13px] tracking-tighter">UNDP</span>
+          </div>
+          <div class="text-[12px] font-semibold leading-tight">
+            United Nations<br>Development Programme
+          </div>
+        </div>
+        <p class="mt-3 text-[12px]" style="color:var(--undp-gray-700)">
+          {{ org_name }}<br>{{ duty_station }}<br>Common premises — conference facilities
+        </p>
+      </div>
+
+      <div class="text-right">
+        <div class="kpi-label">Cost recovery invoice</div>
+        <div class="text-2xl font-bold num" style="color:var(--undp-blue-dark)">{{ invoice.number }}</div>
+        <p class="mt-2 text-[12px] num" style="color:var(--undp-gray-700)">
+          Period: {{ invoice.period_start.strftime('%d %b') }} – {{ (invoice.period_end).strftime('%d %b %Y') }}<br>
+          Raised: {{ invoice.created_at.strftime('%d %b %Y') }} by {{ invoice.created_by.full_name }}<br>
+          {% if invoice.issued_at %}Issued: {{ invoice.issued_at.strftime('%d %b %Y') }}<br>{% endif %}
+          {% if invoice.paid_at %}Settled: {{ invoice.paid_at.strftime('%d %b %Y') }}{% endif %}
+        </p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 py-5 text-[12.5px]">
+      <div>
+        <div class="kpi-label">Billed to</div>
+        <p class="mt-1 font-semibold text-[14px]">{{ invoice.organization.name }}</p>
+        <p style="color:var(--undp-gray-700)">
+          {{ invoice.organization.type_label }} · {{ invoice.organization.code }}<br>
+          {% if invoice.organization.focal_point_name %}Attn: {{ invoice.organization.focal_point_name }}{% if invoice.organization.focal_point_email %} ({{ invoice.organization.focal_point_email }}){% endif %}<br>{% endif %}
+          {% if invoice.organization.billing_address %}{{ invoice.organization.billing_address }}{% endif %}
+        </p>
+      </div>
+      <div>
+        <div class="kpi-label">Charge reference</div>
+        <p class="mt-1 font-semibold num text-[14px]">{{ invoice.organization.charge_reference }}</p>
+        <p style="color:var(--undp-gray-700)">
+          {% if invoice.organization.donor %}Donor: {{ invoice.organization.donor }}<br>{% endif %}
+          {% if invoice.organization.org_type.value == 'UNDP_PROJECT' %}
+            Internal cost transfer — charged at direct cost, no management fee.
+          {% elif invoice.organization.org_type.value == 'UN_AGENCY' %}
+            UN-to-UN cost recovery under the common services agreement.
+          {% else %}
+            Cost recovery at the applicable rate card.
+          {% endif %}
+        </p>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="data">
+        <thead>
+          <tr>
+            <th scope="col">Reference</th><th scope="col">Meeting</th><th scope="col">Room</th>
+            <th scope="col">Date</th><th scope="col" class="right">Hours</th>
+            <th scope="col" class="right">Room</th><th scope="col" class="right">Services</th>
+            <th scope="col" class="right">Mgmt fee</th><th scope="col" class="right">Waiver</th>
+            <th scope="col" class="right">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for b in invoice.bookings %}
+            <tr>
+              <td class="num"><a href="/bookings/{{ b.id }}" style="color:var(--undp-blue)">{{ b.reference }}</a></td>
+              <td class="max-w-[200px] truncate">{{ b.title }}</td>
+              <td>{{ b.room.name }}</td>
+              <td class="num whitespace-nowrap">{{ b.starts_at.strftime('%d %b') }}</td>
+              <td class="right num">{{ '%.2f'|format(b.duration_hours) }}</td>
+              <td class="right num">{{ '{:,.2f}'.format(b.room_charge) }}</td>
+              <td class="right num">{{ '{:,.2f}'.format(b.services_charge) }}</td>
+              <td class="right num">{{ '{:,.2f}'.format(b.admin_fee) }}</td>
+              <td class="right num">{% if b.waiver_amount %}-{{ '{:,.2f}'.format(b.waiver_amount) }}{% else %}—{% endif %}</td>
+              <td class="right num font-semibold">{{ '{:,.2f}'.format(b.total_charge) }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="flex justify-end mt-5">
+      <dl class="w-full sm:w-80 space-y-2 text-[13px]">
+        <div class="flex justify-between"><dt>Direct cost subtotal</dt>
+          <dd class="num">{{ currency }} {{ '{:,.2f}'.format(invoice.subtotal) }}</dd></div>
+        <div class="flex justify-between"><dt>Management fee</dt>
+          <dd class="num">{{ currency }} {{ '{:,.2f}'.format(invoice.admin_fee) }}</dd></div>
+        <div class="flex justify-between items-baseline pt-2.5 border-t" style="border-color:var(--undp-gray-300)">
+          <dt class="kpi-label">Amount due</dt>
+          <dd class="kpi-value num" style="color:var(--undp-blue-dark)">{{ currency }} {{ '{:,.2f}'.format(invoice.total) }}</dd></div>
+      </dl>
+    </div>
+
+    <p class="mt-6 pt-4 border-t text-[11px]" style="border-color:var(--undp-gray-200);color:var(--undp-gray-500)">
+      Charges reflect the rate card in force at the time each booking was confirmed. Queries should be
+      addressed to the facility management team within 30 days of issue.
+    </p>
+  </div>
+</section>
+
+{% if can('invoice.manage') %}
+<section class="card no-print">
+  <div class="card-head"><h2 class="card-title">Invoice actions</h2></div>
+  <form method="post" action="/invoices/{{ invoice.id }}/status" class="p-4 flex flex-wrap gap-2">
+    {% if invoice.status.value == 'DRAFT' %}
+      <button type="submit" name="action" value="issue" class="btn btn-primary">Issue to counterpart</button>
+    {% elif invoice.status.value == 'ISSUED' %}
+      <button type="submit" name="action" value="settle" class="btn btn-success">{{ ui.icon('check') }} Record settlement</button>
+    {% endif %}
+    {% if invoice.status.value in ('DRAFT','ISSUED') %}
+      <button type="submit" name="action" value="void" class="btn btn-danger"
+              onclick="return confirm('Void {{ invoice.number }}? Its bookings return to the uninvoiced pool.');">
+        Void invoice</button>
+    {% endif %}
+    <p class="field-hint w-full">Voiding releases the bookings so they can be re-invoiced. Every action is audited.</p>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

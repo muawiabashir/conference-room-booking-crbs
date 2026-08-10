@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in · Conference Room Booking &amp; Cost Recovery</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="/static/undp.css">
+</head>
+<body class="min-h-screen flex">
+
+  <div class="hidden lg:flex flex-col justify-between w-1/2 p-12 undp-bar text-white">
+    <div class="flex items-center gap-4">
+      <div class="w-12 h-12 bg-white flex items-center justify-center">
+        <span style="color:var(--undp-blue);font-weight:800;font-size:17px;letter-spacing:-.04em">UNDP</span>
+      </div>
+      <div class="text-sm font-semibold leading-tight">United Nations<br>Development Programme</div>
+    </div>
+    <div>
+      <h2 class="text-4xl font-bold leading-tight tracking-tight">Conference Room<br>Booking &amp; Cost Recovery</h2>
+      <div class="undp-accent-rule w-40 mt-5"></div>
+      <p class="mt-5 text-[14px] max-w-md" style="color:#B9CEDF">
+        Common premises scheduling with transparent, auditable cost recovery for UNDP projects
+        and sister UN agencies.
+      </p>
+      <ul class="mt-6 space-y-2 text-[13px]" style="color:#B9CEDF">
+        <li>Room availability and clash-free scheduling</li>
+        <li>Rate cards by counterpart type, with management fees</li>
+        <li>Monthly invoicing and utilisation reporting</li>
+        <li>Role-based access with a full audit trail</li>
+      </ul>
+    </div>
+    <p class="text-[11px]" style="color:#7E97AC">{{ org_name }} · {{ duty_station }}</p>
+  </div>
+
+  <div class="flex-1 flex items-center justify-center p-6 bg-white">
+    <div class="w-full max-w-sm">
+      <div class="lg:hidden flex items-center gap-3 mb-8">
+        <div class="w-10 h-10 flex items-center justify-center" style="background:var(--undp-blue)">
+          <span class="text-white font-extrabold text-[13px] tracking-tighter">UNDP</span>
+        </div>
+        <div class="text-[13px] font-bold" style="color:var(--undp-blue-dark)">Room Booking &amp; Cost Recovery</div>
+      </div>
+
+      <h1 class="text-2xl font-bold" style="color:var(--undp-blue-dark)">Sign in</h1>
+      <p class="text-[13px] mt-1" style="color:var(--undp-gray-500)">
+        Use your official duty-station account.
+      </p>
+
+      {% if error %}
+        <div class="alert alert-error mt-5" role="alert">{{ error }}</div>
+      {% endif %}
+
+      <form method="post" action="/login" class="mt-6 space-y-4" novalidate>
+        <input type="hidden" name="next" value="{{ next }}">
+        <div>
+          <label class="field-label required" for="email">Email address</label>
+          <input class="input" id="email" name="email" type="email" autocomplete="username"
+                 required autofocus placeholder="name@undp.org">
+        </div>
+        <div>
+          <label class="field-label required" for="password">Password</label>
+          <input class="input" id="password" name="password" type="password"
+                 autocomplete="current-password" required>
+          <p class="field-hint">Accounts lock for 15 minutes after 5 failed attempts.</p>
+        </div>
+        <button type="submit" class="btn btn-primary w-full">Sign in</button>
+      </form>
+
+      {% if show_demo_credentials %}
+      <div class="mt-8 p-3 rounded text-[11.5px]" style="background:var(--undp-blue-tint);color:#01426A">
+        <strong>Demo accounts</strong> (password <code class="font-mono">Undp@2026!</code>)<br>
+        admin@undp.org · facility@undp.org · finance@undp.org<br>
+        unicef.focal@un.org · requester@undp.org · auditor@undp.org
+      </div>
+      {% endif %}
+
+      <p class="mt-6 text-[11px]" style="color:var(--undp-gray-500)">
+        Access is logged. Unauthorised use of this system is prohibited.
+      </p>
+    </div>
+  </div>
+</body>
+</html>

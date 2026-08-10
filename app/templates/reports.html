@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block heading %}Cost Recovery Reporting{% endblock %}
+{% block subheading %}{{ month_label }}{% endblock %}
+{% block header_actions %}
+  <form method="get" action="/reports" class="flex items-end gap-2">
+    <div>
+      <label class="sr-only" for="month">Reporting month</label>
+      <input class="input btn-sm" type="month" id="month" name="month" value="{{ month }}"
+             onchange="this.form.submit()" style="min-height:30px">
+    </div>
+    <a href="/reports/export.csv?month={{ month }}" class="btn btn-secondary btn-sm">
+      {{ ui.icon('download', 14) }} Export CSV</a>
+  </form>
+{% endblock %}
+
+{% block content %}
+<section class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+  {{ ui.kpi('Recovered in ' ~ month_label, currency ~ ' ' ~ '{:,.2f}'.format(grand_total), 'Approved and completed bookings', 'var(--undp-green-dark)') }}
+  {{ ui.kpi('Waived', currency ~ ' ' ~ '{:,.2f}'.format(waived_total), 'Approved reductions in the period', 'var(--undp-yellow)') }}
+  {{ ui.kpi('Awaiting invoicing', currency ~ ' ' ~ '{:,.2f}'.format(unbilled), 'All periods, not yet on an invoice', 'var(--undp-red)') }}
+</section>
+
+<section class="card">
+  <div class="card-head"><h2 class="card-title">Recovery trend — last 7 months</h2></div>
+  <div class="p-4">
+    <div class="flex items-end gap-3 h-44" role="img"
+         aria-label="Monthly cost recovery trend for the last seven months">
+      {% for point in trend %}
+        <div class="flex-1 flex flex-col items-center justify-end h-full gap-1.5">
+          <span class="text-[10.5px] num font-semibold" style="color:var(--undp-gray-700)">{{ '{:,.0f}'.format(point.value) }}</span>
+          <div class="w-full rounded-t"
+               style="height:{{ (point.value / trend_max * 100)|round(1) }}%;min-height:3px;background:{% if loop.last %}var(--undp-blue){% else %}#9CC4DF{% endif %}"></div>
+          <span class="text-[10px]" style="color:var(--undp-gray-500)">{{ point.label }}</span>
+        </div>
+      {% endfor %}
+    </div>
+    <p class="field-hint mt-3">Values in {{ currency }}. The final bar is the selected month.</p>
+  </div>
+</section>
+
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+  <section class="card xl:col-span-2">
+    <div class="card-head"><h2 class="card-title">Recovery by counterpart</h2></div>
+    <div class="overflow-x-auto">
+      <table class="data">
+        <thead><tr>
+          <th scope="col">Counterpart</th><th scope="col">Type</th><th scope="col">Code</th>
+          <th scope="col" class="right">Bookings</th><th scope="col" class="right">Waived</th>
+          <th scope="col" class="right">Recovered ({{ currency }})</th>
+        </tr></thead>
+        <tbody>
+          {% for name, org_type, code, count, total, waived in by_org %}
+            <tr>
+              <td class="font-semibold max-w-[240px] truncate">{{ name }}</td>
+              <td class="text-[12px]">{{ org_type_label(org_type.value) }}</td>
+              <td class="num text-[12px]">{{ code }}</td>
+              <td class="right num">{{ count }}</td>
+              <td class="right num">{{ '{:,.2f}'.format(waived or 0) }}</td>
+              <td class="right num font-semibold">{{ '{:,.2f}'.format(total or 0) }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="6">{{ ui.empty('No billable activity in ' ~ month_label ~ '.') }}</td></tr>
+          {% endfor %}
+        </tbody>
+        {% if by_org %}
+        <tfoot><tr style="background:var(--undp-blue-tint)">
+          <td colspan="5" class="right font-bold">Total</td>
+          <td class="right num font-bold">{{ '{:,.2f}'.format(grand_total) }}</td>
+        </tr></tfoot>
+        {% endif %}
+      </table>
+    </div>
+  </section>
+
+  <section class="card xl:col-span-1">
+    <div class="card-head"><h2 class="card-title">By counterpart type</h2></div>
+    <table class="data">
+      <thead><tr><th scope="col">Type</th><th scope="col" class="right">Bkgs</th>
+        <th scope="col" class="right">Recovered</th></tr></thead>
+      <tbody>
+        {% for org_type, count, total in by_type %}
+          <tr>
+            <td class="font-semibold">{{ org_type_label(org_type.value) }}</td>
+            <td class="right num">{{ count }}</td>
+            <td class="right num font-semibold">{{ '{:,.2f}'.format(total or 0) }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="3">{{ ui.empty('No data.') }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+
+<section class="card">
+  <div class="card-head"><h2 class="card-title">Room performance</h2></div>
+  <div class="overflow-x-auto">
+    <table class="data">
+      <thead><tr>
+        <th scope="col">Room</th><th scope="col" class="right">Bookings</th>
+        <th scope="col" class="right">Hours booked</th><th scope="col" class="right">Recovered ({{ currency }})</th>
+        <th scope="col" class="right">Average per booking</th>
+      </tr></thead>
+      <tbody>
+        {% for name, count, total, hours in by_room %}
+          <tr>
+            <td class="font-semibold">{{ name }}</td>
+            <td class="right num">{{ count }}</td>
+            <td class="right num">{{ '%.1f'|format(hours or 0) }}</td>
+            <td class="right num font-semibold">{{ '{:,.2f}'.format(total or 0) }}</td>
+            <td class="right num">{{ '{:,.2f}'.format((total or 0) / count if count else 0) }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5">{{ ui.empty('No room activity in ' ~ month_label ~ '.') }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

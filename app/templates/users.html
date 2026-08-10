@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Users &amp; Roles{% endblock %}
+{% block heading %}Users &amp; Roles{% endblock %}
+{% block subheading %}{{ users|length }} account(s) · every change is written to the audit trail{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+  <section class="card xl:col-span-2">
+    <div class="card-head"><h2 class="card-title">Accounts</h2></div>
+    <div class="overflow-x-auto">
+      <table class="data">
+        <thead><tr>
+          <th scope="col">User</th><th scope="col">Role</th><th scope="col">Scoped to</th>
+          <th scope="col">Last sign-in</th><th scope="col">Status</th><th scope="col">Actions</th>
+        </tr></thead>
+        <tbody>
+          {% for u in users %}
+            <tr>
+              <td>
+                <div class="font-semibold">{{ u.full_name }}</div>
+                <div class="text-[11.5px]" style="color:var(--undp-gray-500)">{{ u.email }}</div>
+              </td>
+              <td>
+                <form method="post" action="/admin/users/{{ u.id }}/role" class="flex gap-1.5 items-center">
+                  <label class="sr-only" for="role-{{ u.id }}">Role for {{ u.full_name }}</label>
+                  <select class="input btn-sm" id="role-{{ u.id }}" name="role" style="min-height:30px;width:150px">
+                    {% for r in roles %}
+                      <option value="{{ r.value }}" {% if u.role == r %}selected{% endif %}>{{ r.label }}</option>
+                    {% endfor %}
+                  </select>
+                  <label class="sr-only" for="org-{{ u.id }}">Counterpart for {{ u.full_name }}</label>
+                  <select class="input btn-sm" id="org-{{ u.id }}" name="organization_id" style="min-height:30px;width:140px">
+                    <option value="">Unscoped</option>
+                    {% for o in orgs %}
+                      <option value="{{ o.id }}" {% if u.organization_id == o.id %}selected{% endif %}>{{ o.code }}</option>
+                    {% endfor %}
+                  </select>
+                  <button type="submit" class="btn btn-secondary btn-sm">Apply</button>
+                </form>
+              </td>
+              <td class="text-[12px]">{{ u.organization.name if u.organization else 'All counterparts' }}</td>
+              <td class="num text-[12px]">
+                {{ u.last_login_at.strftime('%d %b %Y %H:%M') if u.last_login_at else 'Never' }}
+                {% if u.locked_until %}<br><span style="color:var(--undp-red)">Locked</span>{% endif %}
+              </td>
+              <td>
+                {% if u.is_active %}<span class="badge badge-APPROVED">Active</span>
+                {% else %}<span class="badge badge-REJECTED">Disabled</span>{% endif %}
+                {% if u.must_change_password %}<br><span class="text-[10.5px]" style="color:var(--undp-gray-500)">Must reset password</span>{% endif %}
+              </td>
+              <td class="whitespace-nowrap">
+                <form method="post" action="/admin/users/{{ u.id }}/reset" class="inline"
+                      onsubmit="return confirm('Issue a new temporary password for {{ u.email }}?');">
+                  <button type="submit" class="btn btn-secondary btn-sm">Reset password</button>
+                </form>
+                <form method="post" action="/admin/users/{{ u.id }}/toggle" class="inline">
+                  <button type="submit" class="btn {{ 'btn-danger' if u.is_active else 'btn-secondary' }} btn-sm">
+                    {{ 'Disable' if u.is_active else 'Enable' }}</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card xl:col-span-1 self-start">
+    <div class="card-head"><h2 class="card-title">Create an account</h2></div>
+    <form method="post" action="/admin/users" class="p-4 space-y-3">
+      {{ ui.field('full_name', 'Full name', required=True) }}
+      {{ ui.field('email', 'Official email', type='email', required=True) }}
+      <div>
+        <label class="field-label required" for="f-role">Role</label>
+        <select class="input" id="f-role" name="role" required>
+          {% for r in roles %}<option value="{{ r.value }}">{{ r.label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="field-label" for="f-organization_id">Scope to counterpart</label>
+        <select class="input" id="f-organization_id" name="organization_id"
+                aria-describedby="h-scope">
+          <option value="">Unscoped — sees all counterparts</option>
+          {% for o in orgs %}<option value="{{ o.id }}">{{ o.name }}</option>{% endfor %}
+        </select>
+        <p class="field-hint" id="h-scope">
+          Agency focal points and requesters must be scoped; they only see their own records.
+        </p>
+      </div>
+      <button type="submit" class="btn btn-primary w-full">Create account</button>
+      <p class="field-hint">
+        A one-time password is generated and shown once. The user must change it at first sign-in.
+      </p>
+    </form>
+  </section>
+</div>
+{% endblock %}

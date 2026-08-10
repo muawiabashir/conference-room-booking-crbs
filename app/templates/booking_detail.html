@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}{{ booking.reference }}{% endblock %}
+{% block heading %}{{ booking.title }}{% endblock %}
+{% block subheading %}{{ booking.reference }} · raised by {{ booking.requester.full_name }} on {{ booking.created_at.strftime('%d %b %Y') }}{% endblock %}
+{% block header_actions %}
+  <div class="flex items-center gap-2">
+    {{ ui.badge(booking.status.value) }}
+    {% if can('booking.edit') and booking.status.value in ('DRAFT','PENDING') %}
+      <a href="/bookings/{{ booking.id }}/edit" class="btn btn-secondary btn-sm">Amend</a>
+    {% endif %}
+    <a href="/bookings" class="btn btn-secondary btn-sm">{{ ui.icon('arrow-left', 14) }} All bookings</a>
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+
+  <div class="xl:col-span-2 space-y-5">
+    <section class="card">
+      <div class="card-head"><h2 class="card-title">Booking details</h2></div>
+      <dl class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 text-[13px]">
+        <div><dt class="kpi-label">Room</dt><dd class="mt-0.5 font-semibold">{{ booking.room.name }}</dd>
+          <dd class="text-[12px]" style="color:var(--undp-gray-500)">{{ booking.room.location }} · {{ booking.room.capacity }} seats</dd></div>
+        <div><dt class="kpi-label">Date &amp; time</dt>
+          <dd class="mt-0.5 font-semibold num">{{ booking.starts_at.strftime('%A %d %B %Y') }}</dd>
+          <dd class="text-[12px] num" style="color:var(--undp-gray-500)">
+            {{ booking.starts_at.strftime('%H:%M') }}–{{ booking.ends_at.strftime('%H:%M') }}
+            ({{ '%.2f'|format(booking.duration_hours) }} h) {{ tz_label }}</dd></div>
+        <div><dt class="kpi-label">Counterpart charged</dt>
+          <dd class="mt-0.5 font-semibold">{{ booking.organization.name }}</dd>
+          <dd class="text-[12px]" style="color:var(--undp-gray-500)">{{ booking.organization.type_label }}</dd></div>
+        <div><dt class="kpi-label">Charge reference</dt>
+          <dd class="mt-0.5 font-semibold num">{{ booking.organization.charge_reference }}</dd>
+          {% if booking.organization.donor %}<dd class="text-[12px]" style="color:var(--undp-gray-500)">Donor: {{ booking.organization.donor }}</dd>{% endif %}</div>
+        <div><dt class="kpi-label">Attendees</dt><dd class="mt-0.5 font-semibold num">{{ booking.attendees }}</dd></div>
+        <div><dt class="kpi-label">Rate basis applied</dt>
+          <dd class="mt-0.5 font-semibold">{{ booking.rate_basis|replace('_',' ')|title }}</dd></div>
+        {% if booking.purpose %}
+          <div class="sm:col-span-2"><dt class="kpi-label">Purpose</dt><dd class="mt-0.5">{{ booking.purpose }}</dd></div>
+        {% endif %}
+        {% if booking.decided_by %}
+          <div class="sm:col-span-2"><dt class="kpi-label">Decision</dt>
+            <dd class="mt-0.5">{{ booking.status.value|title }} by {{ booking.decided_by.full_name }}
+              on {{ booking.decided_at.strftime('%d %b %Y %H:%M') }}</dd>
+            {% if booking.decision_note %}<dd class="text-[12px] mt-0.5" style="color:var(--undp-gray-500)">“{{ booking.decision_note }}”</dd>{% endif %}</div>
+        {% endif %}
+      </dl>
+    </section>
+
+    {% if booking.services %}
+    <section class="card">
+      <div class="card-head"><h2 class="card-title">Chargeable services</h2></div>
+      <table class="data">
+        <thead><tr><th scope="col">Service</th><th scope="col">Category</th>
+          <th scope="col" class="right">Quantity</th><th scope="col" class="right">Unit price</th>
+          <th scope="col" class="right">Line total</th></tr></thead>
+        <tbody>
+          {% for s in booking.services %}
+            <tr>
+              <td class="font-semibold">{{ s.service_item.name }}</td>
+              <td>{{ s.service_item.category }}</td>
+              <td class="right num">{{ '%g'|format(s.quantity) }} {{ s.service_item.unit }}</td>
+              <td class="right num">{{ '{:,.2f}'.format(s.unit_price) }}</td>
+              <td class="right num font-semibold">{{ '{:,.2f}'.format(s.line_total) }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+    {% endif %}
+
+    {% if booking.waiver_percent %}
+    <section class="alert alert-warn">
+      <strong>Waiver of {{ '%.1f'|format(booking.waiver_percent) }}%
+        ({{ currency }} {{ '{:,.2f}'.format(booking.waiver_amount) }}) applied.</strong>
+      <p class="mt-1">Justification: {{ booking.waiver_reason }}</p>
+    </section>
+    {% endif %}
+  </div>
+
+  <div class="xl:col-span-1 space-y-5">
+    <section class="card">
+      <div class="card-head"><h2 class="card-title">Cost recovery breakdown</h2></div>
+      <div class="p-4">
+        <dl class="space-y-2.5">
+          {% for line in breakdown.lines %}
+            <div class="flex justify-between gap-3 text-[12.5px]">
+              <dt><span class="font-semibold">{{ line.label }}</span><br>
+                <span style="color:var(--undp-gray-500)">{{ line.detail }}</span></dt>
+              <dd class="num shrink-0 font-semibold">{{ '{:,.2f}'.format(line.amount) }}</dd>
+            </div>
+          {% endfor %}
+        </dl>
+        <div class="flex justify-between items-baseline mt-4 pt-3 border-t" style="border-color:var(--undp-gray-300)">
+          <span class="kpi-label">Total charged</span>
+          <span class="kpi-value num" style="color:var(--undp-blue-dark)">{{ currency }} {{ '{:,.2f}'.format(booking.total_charge) }}</span>
+        </div>
+        {% if booking.invoice %}
+          <p class="mt-3 text-[12px]">Invoiced on
+            <a href="/invoices/{{ booking.invoice.id }}" class="font-semibold" style="color:var(--undp-blue)">{{ booking.invoice.number }}</a>
+            ({{ booking.invoice.status.value|title }}).</p>
+        {% endif %}
+      </div>
+    </section>
+
+    {% if can('booking.approve') and booking.status.value == 'PENDING' %}
+    <section class="card no-print">
+      <div class="card-head"><h2 class="card-title">Facility decision</h2></div>
+      <form method="post" action="/bookings/{{ booking.id }}/decision" class="p-4 space-y-3">
+        <div>
+          <label class="field-label" for="note">Note (recorded in the audit trail)</label>
+          <textarea class="input" id="note" name="note" rows="2"
+                    placeholder="Optional rationale for the decision"></textarea>
+        </div>
+        <div class="flex gap-2">
+          <button type="submit" name="decision" value="approve" class="btn btn-success flex-1">{{ ui.icon('check') }} Approve</button>
+          <button type="submit" name="decision" value="reject" class="btn btn-danger flex-1">{{ ui.icon('x') }} Reject</button>
+        </div>
+      </form>
+    </section>
+    {% endif %}
+
+    {% if can('booking.waive') and not booking.invoice_id %}
+    <section class="card no-print">
+      <div class="card-head"><h2 class="card-title">Apply cost-recovery waiver</h2></div>
+      <form method="post" action="/bookings/{{ booking.id }}/waiver" class="p-4 space-y-3">
+        <div>
+          <label class="field-label required" for="percent">Waiver percentage</label>
+          <input class="input num" id="percent" name="percent" type="number" min="0" max="100"
+                 step="0.5" value="{{ booking.waiver_percent }}" required>
+        </div>
+        <div>
+          <label class="field-label required" for="justification">Justification</label>
+          <textarea class="input" id="justification" name="justification" rows="3" required
+                    placeholder="Mandatory. e.g. Inter-agency event held under the UNCT common services agreement.">{{ booking.waiver_reason or '' }}</textarea>
+          <p class="field-hint">Waivers are permanently recorded against your account.</p>
+        </div>
+        <button type="submit" class="btn btn-primary w-full">Apply waiver</button>
+      </form>
+    </section>
+    {% endif %}
+
+    {% if can('booking.cancel') and booking.status.value in ('DRAFT','PENDING','APPROVED') and not booking.invoice_id %}
+    <section class="card no-print">
+      <div class="card-head"><h2 class="card-title">Cancel booking</h2></div>
+      <form method="post" action="/bookings/{{ booking.id }}/cancel" class="p-4 space-y-3"
+            onsubmit="return confirm('Cancel {{ booking.reference }}? All charges will be reversed.');">
+        <div>
+          <label class="field-label" for="reason">Reason</label>
+          <input class="input" id="reason" name="reason" placeholder="e.g. Meeting postponed">
+        </div>
+        <button type="submit" class="btn btn-danger w-full">Cancel booking and reverse charges</button>
+      </form>
+    </section>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

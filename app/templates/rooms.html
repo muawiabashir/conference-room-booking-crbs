@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Rooms{% endblock %}
+{% block heading %}Conference Rooms{% endblock %}
+{% block subheading %}{{ rooms|length }} room(s) · rates are per room and feed the cost recovery engine{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+  <section class="card xl:col-span-2">
+    <div class="card-head"><h2 class="card-title">Room inventory and rate card</h2></div>
+    <div class="overflow-x-auto">
+      <table class="data">
+        <thead><tr>
+          <th scope="col">Code</th><th scope="col">Room</th><th scope="col">Location</th>
+          <th scope="col" class="right">Seats</th><th scope="col" class="right">Hourly</th>
+          <th scope="col" class="right">Half day</th><th scope="col" class="right">Full day</th>
+          <th scope="col">Status</th>{% if can('room.manage') %}<th scope="col"></th>{% endif %}
+        </tr></thead>
+        <tbody>
+          {% for r in rooms %}
+            <tr>
+              <td class="num font-semibold">{{ r.code }}</td>
+              <td>
+                <div class="font-semibold">{{ r.name }}</div>
+                {% if r.feature_list %}
+                  <div class="text-[11px]" style="color:var(--undp-gray-500)">{{ r.feature_list|join(' · ') }}</div>
+                {% endif %}
+              </td>
+              <td class="text-[12px]">{{ r.location }}</td>
+              <td class="right num">{{ r.capacity }}</td>
+              <td class="right num">{{ '{:,.2f}'.format(r.rate_hourly) }}</td>
+              <td class="right num">{{ '{:,.2f}'.format(r.rate_half_day) }}</td>
+              <td class="right num">{{ '{:,.2f}'.format(r.rate_full_day) }}</td>
+              <td>
+                {% if r.is_active %}<span class="badge badge-APPROVED">Bookable</span>
+                {% else %}<span class="badge badge-CANCELLED">Out of service</span>{% endif %}
+              </td>
+              {% if can('room.manage') %}
+              <td class="whitespace-nowrap">
+                <button type="button" class="btn btn-secondary btn-sm"
+                        onclick='loadRoom({{ {"id": r.id, "code": r.code, "name": r.name, "location": r.location, "capacity": r.capacity, "features": r.features, "rate_hourly": r.rate_hourly, "rate_half_day": r.rate_half_day, "rate_full_day": r.rate_full_day}|tojson }})'>Edit</button>
+                <form method="post" action="/rooms/{{ r.id }}/toggle" class="inline">
+                  <button type="submit" class="btn btn-secondary btn-sm">{{ 'Suspend' if r.is_active else 'Restore' }}</button>
+                </form>
+              </td>
+              {% endif %}
+            </tr>
+          {% else %}
+            <tr><td colspan="9">{{ ui.empty('No rooms configured yet.') }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="px-4 py-3 text-[11.5px] border-t" style="border-color:var(--undp-gray-200);color:var(--undp-gray-500)">
+      The engine bills whichever tier is cheapest for the requested duration, then applies the
+      counterpart's rate card. A zero rate disables that tier.
+    </p>
+  </section>
+
+  {% if can('room.manage') %}
+  <section class="card xl:col-span-1 self-start">
+    <div class="card-head">
+      <h2 class="card-title" id="form-title">Add a room</h2>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="resetRoom()">Clear</button>
+    </div>
+    <form method="post" action="/rooms" class="p-4 space-y-3" id="room-form">
+      <input type="hidden" name="room_id" id="room_id" value="">
+      {{ ui.field('code', 'Room code', required=True, hint='Short unique identifier, e.g. CR-01') }}
+      {{ ui.field('name', 'Room name', required=True) }}
+      {{ ui.field('location', 'Location', hint='Building and floor') }}
+      {{ ui.field('capacity', 'Seating capacity', value=20, type='number', required=True, attrs='min="1"') }}
+      {{ ui.field('features', 'Features', hint='Comma separated, e.g. Projector, VC, Interpretation booths') }}
+      <div class="pt-1"><div class="kpi-label">Rates ({{ currency }})</div></div>
+      {{ ui.field('rate_hourly', 'Hourly rate', value=0, type='number', attrs='min="0" step="0.01"') }}
+      {{ ui.field('rate_half_day', 'Half-day rate (up to 4 h)', value=0, type='number', attrs='min="0" step="0.01"') }}
+      {{ ui.field('rate_full_day', 'Full-day rate (up to 8 h)', value=0, type='number', attrs='min="0" step="0.01"') }}
+      <button type="submit" class="btn btn-primary w-full">Save room</button>
+    </form>
+  </section>
+  {% endif %}
+</div>
+
+{% if can('room.manage') %}
+<script>
+function loadRoom(r) {
+  document.getElementById('room_id').value = r.id;
+  ['code','name','location','capacity','features','rate_hourly','rate_half_day','rate_full_day']
+    .forEach(function (k) { document.getElementById('f-' + k).value = r[k]; });
+  document.getElementById('form-title').textContent = 'Edit ' + r.name;
+  document.getElementById('f-code').readOnly = true;
+  document.getElementById('room-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+function resetRoom() {
+  document.getElementById('room-form').reset();
+  document.getElementById('room_id').value = '';
+  document.getElementById('f-code').readOnly = false;
+  document.getElementById('form-title').textContent = 'Add a room';
+}
+</script>
+{% endif %}
+{% endblock %}

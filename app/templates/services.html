@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Service Catalogue{% endblock %}
+{% block heading %}Chargeable Service Catalogue{% endblock %}
+{% block subheading %}Add-on services billed alongside the room charge{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+  <section class="card xl:col-span-2">
+    <div class="card-head"><h2 class="card-title">Catalogue</h2></div>
+    <div class="overflow-x-auto">
+      <table class="data">
+        <thead><tr>
+          <th scope="col">Code</th><th scope="col">Service</th><th scope="col">Unit</th>
+          <th scope="col" class="right">Unit price ({{ currency }})</th><th scope="col">Status</th>
+          {% if can('service.manage') %}<th scope="col"></th>{% endif %}
+        </tr></thead>
+        <tbody>
+          {% for category, items in grouped.items() %}
+            <tr><td colspan="6" class="kpi-label" style="background:var(--undp-gray-100)">{{ category }}</td></tr>
+            {% for item in items %}
+              <tr>
+                <td class="num font-semibold">{{ item.code }}</td>
+                <td>{{ item.name }}</td>
+                <td class="text-[12px]">per {{ item.unit }}</td>
+                <td class="right num font-semibold">{{ '{:,.2f}'.format(item.unit_price) }}</td>
+                <td>{% if item.is_active %}<span class="badge badge-APPROVED">Active</span>
+                    {% else %}<span class="badge badge-CANCELLED">Retired</span>{% endif %}</td>
+                {% if can('service.manage') %}
+                <td>
+                  <button type="button" class="btn btn-secondary btn-sm"
+                          onclick='loadService({{ {"id": item.id, "code": item.code, "name": item.name, "category": item.category, "unit": item.unit, "unit_price": item.unit_price}|tojson }})'>Edit</button>
+                </td>
+                {% endif %}
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="6">{{ ui.empty('No services configured yet.') }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="px-4 py-3 text-[11.5px] border-t" style="border-color:var(--undp-gray-200);color:var(--undp-gray-500)">
+      External counterparts pay a service multiplier on top of these prices; UNDP projects and UN
+      agencies are charged at cost. See <a href="/rate-cards" class="font-semibold" style="color:var(--undp-blue)">rate cards</a>.
+    </p>
+  </section>
+
+  {% if can('service.manage') %}
+  <section class="card xl:col-span-1 self-start">
+    <div class="card-head">
+      <h2 class="card-title" id="svc-title">Add a service</h2>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="resetService()">Clear</button>
+    </div>
+    <form method="post" action="/services" class="p-4 space-y-3" id="service-form">
+      <input type="hidden" name="service_id" id="service_id" value="">
+      {{ ui.field('code', 'Service code', required=True, hint='e.g. CAT-COFFEE') }}
+      {{ ui.field('name', 'Service name', required=True) }}
+      {{ ui.field('category', 'Category', value='Catering', required=True,
+                  hint='Groups the item on the booking form') }}
+      {{ ui.field('unit', 'Unit of charge', value='person', required=True,
+                  hint='e.g. person, hour, event, day') }}
+      {{ ui.field('unit_price', 'Unit price', value=0, type='number', required=True,
+                  attrs='min="0" step="0.01"') }}
+      <button type="submit" class="btn btn-primary w-full">Save service</button>
+    </form>
+  </section>
+  {% endif %}
+</div>
+
+{% if can('service.manage') %}
+<script>
+function loadService(s) {
+  document.getElementById('service_id').value = s.id;
+  ['code','name','category','unit','unit_price'].forEach(function (k) {
+    document.getElementById('f-' + k).value = s[k];
+  });
+  document.getElementById('svc-title').textContent = 'Edit ' + s.name;
+  document.getElementById('f-code').readOnly = true;
+  document.getElementById('service-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+function resetService() {
+  document.getElementById('service-form').reset();
+  document.getElementById('service_id').value = '';
+  document.getElementById('f-code').readOnly = false;
+  document.getElementById('svc-title').textContent = 'Add a service';
+}
+</script>
+{% endif %}
+{% endblock %}

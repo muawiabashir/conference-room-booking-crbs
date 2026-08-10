@@ -1,0 +1,13 @@
+fastapi>=0.110
+uvicorn[standard]>=0.27
+SQLAlchemy>=2.0
+Jinja2>=3.1
+python-multipart>=0.0.9
+passlib>=1.7.4
+itsdangerous>=2.1
+python-dateutil>=2.8
+
+# Production server and PostgreSQL driver. Kept in the single requirements file
+# because the Azure App Service build (Oryx) only installs from requirements.txt.
+gunicorn>=21.2
+psycopg[binary]>=3.1

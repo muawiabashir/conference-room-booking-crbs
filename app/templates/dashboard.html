@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block heading %}Operations Dashboard{% endblock %}
+{% block subheading %}Cost recovery position for {{ month_label }}{% endblock %}
+{% block header_actions %}
+  {% if can('booking.create') %}
+    <a href="/bookings/new" class="btn btn-primary">{{ ui.icon('plus') }} New booking</a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4" aria-label="Key indicators">
+  {{ ui.kpi('Awaiting approval', pending, 'Requests pending a facility decision', 'var(--undp-yellow)') }}
+  {{ ui.kpi('Confirmed upcoming', upcoming_count, 'Approved meetings still to take place') }}
+  {{ ui.kpi('Recovered ' ~ month_label, '{:,.0f}'.format(month_recovered), currency ~ ' charged this month', 'var(--undp-green-dark)') }}
+  {{ ui.kpi('Not yet invoiced', '{:,.0f}'.format(unbilled), currency ~ ' billable, awaiting an invoice', 'var(--undp-red)') }}
+</section>
+
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+
+  <!-- Recovery by counterpart type -->
+  <section class="card xl:col-span-1">
+    <div class="card-head"><h2 class="card-title">Recovery by counterpart type</h2></div>
+    <div class="p-4 space-y-4">
+      {% if split_rows %}
+        {% for org_type, amount, count in split_rows %}
+          {% set pct = ((amount or 0) / split_max * 100)|round %}
+          <div>
+            <div class="flex justify-between text-[12.5px] mb-1.5">
+              <span class="font-semibold">{{ org_type_label(org_type.value) }}</span>
+              <span class="num" style="color:var(--undp-gray-700)">{{ currency }} {{ '{:,.0f}'.format(amount or 0) }} · {{ count }} bkg</span>
+            </div>
+            <div class="h-2.5 rounded-full overflow-hidden" style="background:var(--undp-gray-200)">
+              <div class="h-full rounded-full" style="width:{{ pct }}%;background:var(--undp-blue)"></div>
+            </div>
+          </div>
+        {% endfor %}
+        <p class="text-[11px] pt-1" style="color:var(--undp-gray-500)">
+          UNDP projects are charged at direct cost; UN agencies include the management fee.
+        </p>
+      {% else %}
+        {{ ui.empty('No charges recorded for ' ~ month_label ~ ' yet.') }}
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Room utilisation -->
+  <section class="card xl:col-span-2">
+    <div class="card-head">
+      <h2 class="card-title">Room utilisation — last 30 days</h2>
+      <a href="/rooms" class="text-[12px] font-semibold" style="color:var(--undp-blue)">Manage rooms</a>
+    </div>
+    <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+      {% for row in utilisation %}
+        <div>
+          <div class="flex justify-between text-[12.5px] mb-1.5">
+            <span class="font-semibold truncate pr-2">{{ row.room.name }}</span>
+            <span class="num shrink-0" style="color:var(--undp-gray-700)">{{ row.hours }} h · {{ row.percent }}%</span>
+          </div>
+          <div class="h-2.5 rounded-full overflow-hidden" style="background:var(--undp-gray-200)">
+            <div class="h-full rounded-full"
+                 style="width:{{ row.percent }}%;background:{% if row.percent > 75 %}var(--undp-red){% elif row.percent > 40 %}var(--undp-blue){% else %}var(--undp-gray-500){% endif %}"></div>
+          </div>
+        </div>
+      {% else %}
+        <div class="md:col-span-2">{{ ui.empty('No rooms configured yet.', '/rooms', 'Add a room') }}</div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+
+  <!-- Approval queue -->
+  {% if can('booking.approve') %}
+  <section class="card xl:col-span-1">
+    <div class="card-head">
+      <h2 class="card-title">Approval queue</h2>
+      {% if approvals %}<span class="badge badge-PENDING">{{ approvals|length }} waiting</span>{% endif %}
+    </div>
+    <div class="divide-y" style="border-color:var(--undp-gray-200)">
+      {% for b in approvals %}
+        <a href="/bookings/{{ b.id }}" class="block px-4 py-3 hover:bg-[var(--undp-blue-tint)]">
+          <div class="flex justify-between gap-2">
+            <span class="text-[13px] font-semibold truncate">{{ b.title }}</span>
+            <span class="num text-[12px] shrink-0">{{ currency }} {{ '{:,.2f}'.format(b.total_charge) }}</span>
+          </div>
+          <div class="text-[11.5px] mt-0.5" style="color:var(--undp-gray-500)">
+            {{ b.room.name }} · {{ b.starts_at.strftime('%d %b, %H:%M') }} · {{ b.organization.name }}
+          </div>
+        </a>
+      {% else %}
+        <div>{{ ui.empty('Nothing awaiting your approval.') }}</div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- Upcoming -->
+  <section class="card {% if can('booking.approve') %}xl:col-span-2{% else %}xl:col-span-3{% endif %}">
+    <div class="card-head">
+      <h2 class="card-title">Upcoming meetings</h2>
+      <a href="/calendar" class="text-[12px] font-semibold" style="color:var(--undp-blue)">Open calendar</a>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="data">
+        <thead>
+          <tr>
+            <th scope="col">Reference</th><th scope="col">Meeting</th><th scope="col">Room</th>
+            <th scope="col">When</th><th scope="col">Counterpart</th>
+            <th scope="col" class="right">Charge</th><th scope="col">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for b in upcoming_list %}
+            <tr>
+              <td><a href="/bookings/{{ b.id }}" class="font-semibold num" style="color:var(--undp-blue)">{{ b.reference }}</a></td>
+              <td class="max-w-[220px] truncate">{{ b.title }}</td>
+              <td>{{ b.room.name }}</td>
+              <td class="num whitespace-nowrap">{{ b.starts_at.strftime('%d %b %H:%M') }}–{{ b.ends_at.strftime('%H:%M') }}</td>
+              <td class="max-w-[180px] truncate">{{ b.organization.name }}</td>
+              <td class="right num">{{ '{:,.2f}'.format(b.total_charge) }}</td>
+              <td>{{ ui.badge(b.status.value) }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="7">{{ ui.empty('No upcoming meetings.', '/bookings/new' if can('booking.create') else '', 'Book a room') }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+{% if invoice_summary %}
+<section class="card">
+  <div class="card-head">
+    <h2 class="card-title">Invoicing position</h2>
+    <a href="/invoices" class="text-[12px] font-semibold" style="color:var(--undp-blue)">All invoices</a>
+  </div>
+  <div class="p-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div><div class="kpi-label">Draft invoices</div><div class="kpi-value num">{{ invoice_summary.draft }}</div></div>
+    <div><div class="kpi-label">Issued, awaiting settlement</div><div class="kpi-value num">{{ currency }} {{ '{:,.2f}'.format(invoice_summary.issued) }}</div></div>
+    <div><div class="kpi-label">Settled to date</div><div class="kpi-value num" style="color:var(--undp-green-dark)">{{ currency }} {{ '{:,.2f}'.format(invoice_summary.paid) }}</div></div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

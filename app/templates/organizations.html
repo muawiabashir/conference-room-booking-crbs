@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Counterparts{% endblock %}
+{% block heading %}Counterparts{% endblock %}
+{% block subheading %}UNDP projects, sister UN agencies and other bodies charged by this facility{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+  <div class="xl:col-span-2 space-y-5">
+    {% for type_label, orgs in grouped.items() %}
+      <section class="card">
+        <div class="card-head">
+          <h2 class="card-title">{{ type_label }}</h2>
+          <span class="text-[11.5px]" style="color:var(--undp-gray-500)">{{ orgs|length }} counterpart(s)</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="data">
+            <thead><tr>
+              <th scope="col">Code</th><th scope="col">Name</th><th scope="col">Charge reference</th>
+              <th scope="col">Focal point</th><th scope="col">Status</th>
+              {% if can('org.manage') %}<th scope="col"></th>{% endif %}
+            </tr></thead>
+            <tbody>
+              {% for o in orgs %}
+                <tr>
+                  <td class="num font-semibold">{{ o.code }}</td>
+                  <td>
+                    <div class="font-semibold">{{ o.name }}</div>
+                    {% if o.donor %}<div class="text-[11px]" style="color:var(--undp-gray-500)">Donor: {{ o.donor }}</div>{% endif %}
+                  </td>
+                  <td class="num text-[12px]">{{ o.charge_reference }}</td>
+                  <td class="text-[12px]">
+                    {{ o.focal_point_name or '—' }}
+                    {% if o.focal_point_email %}<br><span style="color:var(--undp-gray-500)">{{ o.focal_point_email }}</span>{% endif %}
+                  </td>
+                  <td>{% if o.is_active %}<span class="badge badge-APPROVED">Active</span>
+                      {% else %}<span class="badge badge-CANCELLED">Inactive</span>{% endif %}</td>
+                  {% if can('org.manage') %}
+                  <td>
+                    <button type="button" class="btn btn-secondary btn-sm"
+                            onclick='loadOrg({{ {"id": o.id, "code": o.code, "name": o.name, "org_type": o.org_type.value, "project_number": o.project_number or "", "output_id": o.output_id or "", "donor": o.donor or "", "focal_point_name": o.focal_point_name or "", "focal_point_email": o.focal_point_email or "", "billing_address": o.billing_address or ""}|tojson }})'>Edit</button>
+                  </td>
+                  {% endif %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    {% else %}
+      <section class="card">{{ ui.empty('No counterparts registered yet.') }}</section>
+    {% endfor %}
+  </div>
+
+  {% if can('org.manage') %}
+  <section class="card xl:col-span-1 self-start">
+    <div class="card-head">
+      <h2 class="card-title" id="org-title">Add a counterpart</h2>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="resetOrg()">Clear</button>
+    </div>
+    <form method="post" action="/organizations" class="p-4 space-y-3" id="org-form">
+      <input type="hidden" name="org_id" id="org_id" value="">
+      {{ ui.field('code', 'Counterpart code', required=True, hint='e.g. UNICEF, PRJ-00142') }}
+      {{ ui.field('name', 'Full name', required=True) }}
+      <div>
+        <label class="field-label required" for="f-org_type">Counterpart type</label>
+        <select class="input" id="f-org_type" name="org_type" required aria-describedby="h-org_type">
+          {% for t in org_types %}
+            <option value="{{ t.value }}">{{ type_labels[t.value] }}</option>
+          {% endfor %}
+        </select>
+        <p class="field-hint" id="h-org_type">Determines the rate card and management fee applied.</p>
+      </div>
+      <div class="pt-1"><div class="kpi-label">UNDP project coding (required for UNDP projects)</div></div>
+      {{ ui.field('project_number', 'Project / award number', hint='Quantum award ID') }}
+      {{ ui.field('output_id', 'Output / activity ID') }}
+      {{ ui.field('donor', 'Donor') }}
+      <div class="pt-1"><div class="kpi-label">Billing contact</div></div>
+      {{ ui.field('focal_point_name', 'Focal point name') }}
+      {{ ui.field('focal_point_email', 'Focal point email', type='email') }}
+      <div>
+        <label class="field-label" for="f-billing_address">Billing address</label>
+        <textarea class="input" id="f-billing_address" name="billing_address" rows="2"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary w-full">Save counterpart</button>
+    </form>
+  </section>
+  {% endif %}
+</div>
+
+{% if can('org.manage') %}
+<script>
+function loadOrg(o) {
+  document.getElementById('org_id').value = o.id;
+  ['code','name','org_type','project_number','output_id','donor','focal_point_name',
+   'focal_point_email','billing_address'].forEach(function (k) {
+    document.getElementById('f-' + k).value = o[k];
+  });
+  document.getElementById('org-title').textContent = 'Edit ' + o.name;
+  document.getElementById('f-code').readOnly = true;
+  document.getElementById('org-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+function resetOrg() {
+  document.getElementById('org-form').reset();
+  document.getElementById('org_id').value = '';
+  document.getElementById('f-code').readOnly = false;
+  document.getElementById('org-title').textContent = 'Add a counterpart';
+}
+</script>
+{% endif %}
+{% endblock %}

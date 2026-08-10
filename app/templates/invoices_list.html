@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Invoices{% endblock %}
+{% block heading %}Cost Recovery Invoices{% endblock %}
+{% block subheading %}{{ invoices|length }} invoice(s){% endblock %}
+
+{% block content %}
+{% if can('invoice.manage') %}
+<section class="card">
+  <div class="card-head"><h2 class="card-title">Generate a monthly invoice</h2></div>
+  <form method="post" action="/invoices/generate" class="p-4 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+    <div>
+      <label class="field-label required" for="organization_id">Counterpart</label>
+      <select class="input" id="organization_id" name="organization_id" required>
+        <option value="">Select…</option>
+        {% for o in orgs %}<option value="{{ o.id }}">{{ o.name }} ({{ o.type_label }})</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="field-label required" for="month">Billing month</label>
+      <input class="input" id="month" name="month" type="month" value="{{ default_month }}" required>
+    </div>
+    <button type="submit" class="btn btn-primary">{{ ui.icon('receipt') }} Generate draft invoice</button>
+    <p class="field-hint sm:col-span-3">
+      Collects every approved or completed booking in the month that has not already been invoiced.
+    </p>
+  </form>
+</section>
+{% endif %}
+
+<section class="card">
+  <div class="card-head">
+    <h2 class="card-title">Invoices</h2>
+    <form method="get" action="/invoices">
+      <label class="sr-only" for="status">Filter by status</label>
+      <select class="input btn-sm" id="status" name="status" onchange="this.form.submit()" style="min-height:30px">
+        <option value="">All statuses</option>
+        {% for s in statuses %}
+          <option value="{{ s.value }}" {% if f_status == s.value %}selected{% endif %}>{{ s.value|title }}</option>
+        {% endfor %}
+      </select>
+    </form>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="data">
+      <thead>
+        <tr>
+          <th scope="col">Invoice</th><th scope="col">Counterpart</th><th scope="col">Type</th>
+          <th scope="col">Period</th><th scope="col" class="right">Bookings</th>
+          <th scope="col" class="right">Subtotal</th><th scope="col" class="right">Mgmt fee</th>
+          <th scope="col" class="right">Total ({{ currency }})</th><th scope="col">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inv in invoices %}
+          <tr>
+            <td><a href="/invoices/{{ inv.id }}" class="font-semibold num" style="color:var(--undp-blue)">{{ inv.number }}</a></td>
+            <td class="max-w-[200px] truncate">{{ inv.organization.name }}</td>
+            <td class="text-[12px]">{{ inv.organization.type_label }}</td>
+            <td class="num whitespace-nowrap">{{ inv.period_start.strftime('%b %Y') }}</td>
+            <td class="right num">{{ inv.bookings|length }}</td>
+            <td class="right num">{{ '{:,.2f}'.format(inv.subtotal) }}</td>
+            <td class="right num">{{ '{:,.2f}'.format(inv.admin_fee) }}</td>
+            <td class="right num font-semibold">{{ '{:,.2f}'.format(inv.total) }}</td>
+            <td>{{ ui.badge(inv.status.value) }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="9">{{ ui.empty('No invoices yet. Generate one from an approved booking month.') }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+.secret_key
+crbs.db
+.DS_Store
+.claude/settings.local.json

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Bookings{% endblock %}
+{% block heading %}Bookings{% endblock %}
+{% block subheading %}{{ bookings|length }} record(s){% if not can('booking.view.all') %} for your counterpart{% endif %}{% endblock %}
+{% block header_actions %}
+  {% if can('booking.create') %}
+    <a href="/bookings/new" class="btn btn-primary">{{ ui.icon('plus') }} New booking</a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<section class="card">
+  <form method="get" action="/bookings" class="p-4 grid grid-cols-1 sm:grid-cols-4 gap-3 border-b"
+        style="border-color:var(--undp-gray-200)">
+    <div>
+      <label class="field-label" for="q">Search</label>
+      <input class="input" id="q" name="q" value="{{ f_q }}" placeholder="Title or reference">
+    </div>
+    <div>
+      <label class="field-label" for="status">Status</label>
+      <select class="input" id="status" name="status">
+        <option value="">All statuses</option>
+        {% for s in statuses %}
+          <option value="{{ s.value }}" {% if f_status == s.value %}selected{% endif %}>{{ s.value|title }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="field-label" for="org">Counterpart</label>
+      <select class="input" id="org" name="org">
+        <option value="">All counterparts</option>
+        {% for o in orgs %}
+          <option value="{{ o.id }}" {% if f_org == o.id|string %}selected{% endif %}>{{ o.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="flex items-end gap-2">
+      <button type="submit" class="btn btn-primary">Filter</button>
+      <a href="/bookings" class="btn btn-secondary">Reset</a>
+    </div>
+  </form>
+
+  <div class="overflow-x-auto">
+    <table class="data">
+      <thead>
+        <tr>
+          <th scope="col">Reference</th><th scope="col">Meeting</th><th scope="col">Room</th>
+          <th scope="col">Date &amp; time</th><th scope="col">Counterpart</th>
+          <th scope="col">Charge ref.</th><th scope="col" class="right">Total ({{ currency }})</th>
+          <th scope="col">Status</th><th scope="col">Invoice</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in bookings %}
+          <tr>
+            <td><a href="/bookings/{{ b.id }}" class="font-semibold num" style="color:var(--undp-blue)">{{ b.reference }}</a></td>
+            <td class="max-w-[220px] truncate" title="{{ b.title }}">{{ b.title }}</td>
+            <td class="whitespace-nowrap">{{ b.room.name }}</td>
+            <td class="num whitespace-nowrap">{{ b.starts_at.strftime('%d %b %Y %H:%M') }}–{{ b.ends_at.strftime('%H:%M') }}</td>
+            <td class="max-w-[190px] truncate" title="{{ b.organization.name }}">{{ b.organization.name }}</td>
+            <td class="num text-[12px]" style="color:var(--undp-gray-700)">{{ b.organization.charge_reference }}</td>
+            <td class="right num font-semibold">{{ '{:,.2f}'.format(b.total_charge) }}</td>
+            <td>{{ ui.badge(b.status.value) }}</td>
+            <td class="num text-[12px]">
+              {% if b.invoice %}<a href="/invoices/{{ b.invoice.id }}" style="color:var(--undp-blue)">{{ b.invoice.number }}</a>
+              {% else %}<span style="color:var(--undp-gray-500)">—</span>{% endif %}
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="9">{{ ui.empty('No bookings match these filters.', '/bookings/new' if can('booking.create') else '', 'Create a booking') }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

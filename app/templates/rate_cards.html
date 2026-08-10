@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Rate Cards{% endblock %}
+{% block heading %}Cost Recovery Rate Cards{% endblock %}
+{% block subheading %}Policy applied per counterpart type. Existing bookings keep their original charges.{% endblock %}
+
+{% block content %}
+<div class="alert alert-info">
+  <strong>How charges are built.</strong> Room charge (cheapest of hourly / half-day / full-day)
+  × room multiplier, plus services × service multiplier, plus a management fee on the direct cost,
+  less any approved waiver.
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+  {% for card in cards %}
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title">{{ card.type_label }}</h2>
+        <span class="badge badge-{{ 'APPROVED' if card.admin_fee_percent == 0 else 'PENDING' }}">
+          {{ '%.1f'|format(card.admin_fee_percent) }}% fee
+        </span>
+      </div>
+      <form method="post" action="/rate-cards/{{ card.id }}" class="p-4 space-y-3">
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="field-label required" for="rm-{{ card.id }}">Room multiplier</label>
+            <input class="input num" id="rm-{{ card.id }}" name="room_multiplier" type="number"
+                   min="0" step="0.01" value="{{ card.room_multiplier }}" required>
+          </div>
+          <div>
+            <label class="field-label required" for="sm-{{ card.id }}">Service multiplier</label>
+            <input class="input num" id="sm-{{ card.id }}" name="service_multiplier" type="number"
+                   min="0" step="0.01" value="{{ card.service_multiplier }}" required>
+          </div>
+          <div>
+            <label class="field-label required" for="af-{{ card.id }}">Management fee %</label>
+            <input class="input num" id="af-{{ card.id }}" name="admin_fee_percent" type="number"
+                   min="0" max="100" step="0.1" value="{{ card.admin_fee_percent }}" required>
+          </div>
+        </div>
+        <div>
+          <label class="field-label" for="nt-{{ card.id }}">Policy note</label>
+          <textarea class="input" id="nt-{{ card.id }}" name="notes" rows="3">{{ card.notes or '' }}</textarea>
+          <p class="field-hint">Shown to finance staff as the rationale for this treatment.</p>
+        </div>
+        <button type="submit" class="btn btn-primary">Save rate card</button>
+      </form>
+    </section>
+  {% endfor %}
+</div>
+
+<section class="card">
+  <div class="card-head"><h2 class="card-title">Worked example — 3-hour meeting, room at 40/h, 25 coffee breaks at 6.00</h2></div>
+  <div class="overflow-x-auto">
+    <table class="data">
+      <thead><tr>
+        <th scope="col">Counterpart type</th><th scope="col" class="right">Room</th>
+        <th scope="col" class="right">Services</th><th scope="col" class="right">Management fee</th>
+        <th scope="col" class="right">Total ({{ currency }})</th>
+      </tr></thead>
+      <tbody>
+        {% for card in cards %}
+          {% set room = 120 * card.room_multiplier %}
+          {% set svc = 150 * card.service_multiplier %}
+          {% set fee = (room + svc) * card.admin_fee_percent / 100 %}
+          <tr>
+            <td class="font-semibold">{{ card.type_label }}</td>
+            <td class="right num">{{ '{:,.2f}'.format(room) }}</td>
+            <td class="right num">{{ '{:,.2f}'.format(svc) }}</td>
+            <td class="right num">{{ '{:,.2f}'.format(fee) }}</td>
+            <td class="right num font-semibold">{{ '{:,.2f}'.format(room + svc + fee) }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

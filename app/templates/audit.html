@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Audit Trail{% endblock %}
+{% block heading %}Audit Trail{% endblock %}
+{% block subheading %}Showing the {{ entries|length }} most recent entries{% endblock %}
+
+{% block content %}
+<section class="card">
+  <form method="get" action="/admin/audit" class="p-4 grid grid-cols-1 sm:grid-cols-4 gap-3 border-b"
+        style="border-color:var(--undp-gray-200)">
+    <div>
+      <label class="field-label" for="actor">Actor</label>
+      <input class="input" id="actor" name="actor" value="{{ f_actor }}" placeholder="Email contains…">
+    </div>
+    <div>
+      <label class="field-label" for="action">Action</label>
+      <select class="input" id="action" name="action">
+        <option value="">All actions</option>
+        {% for a in actions %}<option value="{{ a }}" {% if f_action == a %}selected{% endif %}>{{ a }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="field-label" for="outcome">Outcome</label>
+      <select class="input" id="outcome" name="outcome">
+        <option value="">All outcomes</option>
+        <option value="SUCCESS" {% if f_outcome == 'SUCCESS' %}selected{% endif %}>Success</option>
+        <option value="DENIED" {% if f_outcome == 'DENIED' %}selected{% endif %}>Denied</option>
+      </select>
+    </div>
+    <div class="flex items-end gap-2">
+      <button type="submit" class="btn btn-primary">Filter</button>
+      <a href="/admin/audit" class="btn btn-secondary">Reset</a>
+    </div>
+  </form>
+
+  <div class="overflow-x-auto">
+    <table class="data">
+      <thead><tr>
+        <th scope="col">Timestamp (UTC)</th><th scope="col">Actor</th><th scope="col">Action</th>
+        <th scope="col">Entity</th><th scope="col">Detail</th><th scope="col">Source IP</th>
+        <th scope="col">Outcome</th>
+      </tr></thead>
+      <tbody>
+        {% for e in entries %}
+          <tr {% if e.outcome == 'DENIED' %}style="background:#FFFBFA"{% endif %}>
+            <td class="num whitespace-nowrap text-[12px]">{{ e.at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+            <td class="text-[12px]">{{ e.actor_email }}</td>
+            <td><span class="num text-[11.5px] font-semibold">{{ e.action }}</span></td>
+            <td class="text-[12px]">
+              {% if e.entity_type %}{{ e.entity_type }} <span class="num" style="color:var(--undp-gray-500)">{{ e.entity_id }}</span>{% else %}—{% endif %}
+            </td>
+            <td class="text-[12px] max-w-[420px]">{{ e.detail or '—' }}</td>
+            <td class="num text-[11.5px]" style="color:var(--undp-gray-500)">{{ e.ip_address or '—' }}</td>
+            <td>
+              {% if e.outcome == 'SUCCESS' %}<span class="badge badge-APPROVED">Success</span>
+              {% else %}<span class="badge badge-REJECTED">Denied</span>{% endif %}
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="7">{{ ui.empty('No audit entries match these filters.') }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="px-4 py-3 text-[11.5px] border-t" style="border-color:var(--undp-gray-200);color:var(--undp-gray-500)">
+    The audit log is append-only; the application exposes no route to edit or delete entries.
+    Retain in line with your office's records-management policy.
+  </p>
+</section>
+{% endblock %}

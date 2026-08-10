@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Dashboard{% endblock %} · Conference Room Booking &amp; Cost Recovery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<link rel="stylesheet" href="/static/undp.css">
+</head>
+<body>
+<a href="#main" class="skip-link">Skip to main content</a>
+
+<div class="flex min-h-screen">
+
+  <!-- Sidebar -->
+  <aside class="w-60 shrink-0 undp-bar flex flex-col no-print" aria-label="Primary">
+    <div class="px-4 py-4 border-b border-white/10">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 bg-white flex items-center justify-center shrink-0" aria-hidden="true">
+          <span style="color:var(--undp-blue);font-weight:800;font-size:13px;letter-spacing:-.04em">UNDP</span>
+        </div>
+        <div class="leading-tight">
+          <div class="text-white text-[12px] font-bold">Room Booking</div>
+          <div class="text-[10px]" style="color:#8FAEC6">Cost Recovery System</div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="flex-1 overflow-y-auto px-2 pb-4">
+      {% set nav = nav_sections(user) %}
+      {% for section in nav %}
+        <div class="nav-section">{{ section.title }}</div>
+        {% for item in section.links %}
+          <a href="{{ item.url }}"
+             class="nav-item {% if active_nav == item.key %}active{% endif %}"
+             {% if active_nav == item.key %}aria-current="page"{% endif %}>
+            {{ ui.icon(item.icon) }}<span>{{ item.label }}</span>
+            {% if item.badge %}<span class="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:var(--undp-yellow);color:#232E3E">{{ item.badge }}</span>{% endif %}
+          </a>
+        {% endfor %}
+      {% endfor %}
+    </nav>
+
+    <div class="px-4 py-3 border-t border-white/10 text-[10px]" style="color:#7E97AC">
+      {{ org_name }}<br>{{ duty_station }} · {{ tz_label }}
+    </div>
+  </aside>
+
+  <!-- Main column -->
+  <div class="flex-1 min-w-0 flex flex-col">
+    <div class="undp-accent-rule no-print"></div>
+
+    <header class="bg-white border-b px-6 py-3 flex items-center justify-between gap-4 no-print"
+            style="border-color:var(--undp-gray-200)">
+      <div class="min-w-0 flex-1">
+        <h1 class="text-[17px] font-bold leading-snug" style="color:var(--undp-blue-dark)">{% block heading %}Dashboard{% endblock %}</h1>
+        <p class="text-[12px] leading-snug" style="color:var(--undp-gray-500)">{% block subheading %}{% endblock %}</p>
+      </div>
+      <div class="flex items-center gap-4 shrink-0">
+        {% block header_actions %}{% endblock %}
+        <div class="flex items-center gap-2.5 pl-4 border-l" style="border-color:var(--undp-gray-200)">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white"
+               style="background:var(--undp-blue)" aria-hidden="true">{{ user.initials }}</div>
+          <div class="text-right leading-tight hidden sm:block">
+            <div class="text-[12px] font-semibold">{{ user.full_name }}</div>
+            <div class="text-[10.5px]" style="color:var(--undp-gray-500)">{{ user.role.label }}</div>
+          </div>
+          <a href="/logout" class="btn btn-secondary btn-sm" title="Sign out">Sign out</a>
+        </div>
+      </div>
+    </header>
+
+    <main id="main" class="flex-1 p-6 space-y-5">
+      {% with messages = flash(request) %}
+        {% for level, text in messages %}
+          <div class="alert alert-{{ level }}" role="{% if level == 'error' %}alert{% else %}status{% endif %}">{{ text }}</div>
+        {% endfor %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="px-6 py-3 text-[11px] border-t no-print"
+            style="color:var(--undp-gray-500);border-color:var(--undp-gray-200)">
+      Conference Room Booking &amp; Cost Recovery System — {{ org_name }}.
+      All actions are recorded in the audit trail. Amounts in {{ currency }}.
+    </footer>
+  </div>
+</div>
+</body>
+</html>
