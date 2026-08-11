@@ -5,11 +5,25 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "type": "debugpy",
+            "request": "launch",
+            "name": "Run FastAPI app",
+            "program": "${workspaceFolder}/run.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
             "type": "chrome",
             "request": "launch",
             "name": "Launch Chrome against localhost",
-            "url": "http://localhost:8080",
+            "url": "http://localhost:8000",
             "webRoot": "${workspaceFolder}"
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Run app + Chrome",
+            "configurations": ["Run FastAPI app", "Launch Chrome against localhost"]
         }
     ]
 }

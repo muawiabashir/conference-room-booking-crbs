@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: crbs
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: >-
+      gunicorn app.main:app
+      --worker-class uvicorn.workers.UvicornWorker
+      --workers 2
+      --bind 0.0.0.0:$PORT
+      --timeout 120
+      --forwarded-allow-ips '*'
+      --access-logfile -
+      --error-logfile -
+    envVars:
+      - key: CRBS_ENV
+        value: production
+      - key: CRBS_SECRET_KEY
+        generateValue: true
+      - key: CRBS_DATABASE_URL
+        sync: false
+      - key: CRBS_ORG_NAME
+        value: UNDP Country Office
+      - key: CRBS_DUTY_STATION
+        value: Khartoum, Sudan
+      - key: CRBS_CURRENCY
+        value: USD
+      - key: CRBS_TZ_LABEL
+        value: EAT (UTC+2)

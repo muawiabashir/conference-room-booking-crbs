@@ -4,7 +4,15 @@ from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from .config import DATABASE_URL
 
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
-engine = create_engine(DATABASE_URL, connect_args=connect_args, future=True)
+# pool_pre_ping: hosted poolers (e.g. Supabase's Supavisor) silently drop idle
+# connections; without this, SQLAlchemy hands back a dead one and the next
+# query fails with "server closed the connection unexpectedly".
+engine = create_engine(
+    DATABASE_URL,
+    connect_args=connect_args,
+    pool_pre_ping=not DATABASE_URL.startswith("sqlite"),
+    future=True,
+)
 
 if DATABASE_URL.startswith("sqlite"):
     @event.listens_for(engine, "connect")
