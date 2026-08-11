@@ -54,8 +54,9 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         return RedirectResponse("/login?next=%s" % request.url.path, status_code=303)
     if exc.status_code in (403, 404):
         return templates.TemplateResponse(
+            request,
             "error.html",
-            {"request": request, "code": exc.status_code, "detail": exc.detail},
+            {"code": exc.status_code, "detail": exc.detail},
             status_code=exc.status_code,
         )
     return HTMLResponse("<h1>%s</h1><p>%s</p>" % (exc.status_code, exc.detail),

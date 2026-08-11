@@ -17,8 +17,8 @@ router = APIRouter()
 def login_form(request: Request, next: str = "/", db: Session = Depends(get_db)):
     if load_user(request, db):
         return RedirectResponse("/", status_code=303)
-    return templates.TemplateResponse("login.html", {
-        "request": request, "next": next, "error": None,
+    return templates.TemplateResponse(request, "login.html", {
+        "next": next, "error": None,
         "org_name": ORGANISATION_NAME, "duty_station": DUTY_STATION, "currency": CURRENCY,
     })
 
@@ -28,8 +28,8 @@ def login_submit(request: Request, email: str = Form(...), password: str = Form(
                  next: str = Form("/"), db: Session = Depends(get_db)):
     user, error = authenticate(db, request, email, password)
     if error:
-        return templates.TemplateResponse("login.html", {
-            "request": request, "next": next, "error": error,
+        return templates.TemplateResponse(request, "login.html", {
+            "next": next, "error": error,
             "org_name": ORGANISATION_NAME, "duty_station": DUTY_STATION, "currency": CURRENCY,
         }, status_code=401)
     if user.must_change_password:
@@ -49,8 +49,8 @@ def logout(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/account/password")
 def password_form(request: Request, db: Session = Depends(get_db), user=Depends(current_user)):
-    return templates.TemplateResponse("password.html", {
-        "request": request, "user": user, "errors": [],
+    return templates.TemplateResponse(request, "password.html", {
+        "user": user, "errors": [],
         "org_name": ORGANISATION_NAME, "duty_station": DUTY_STATION, "currency": CURRENCY,
     })
 
@@ -69,8 +69,8 @@ def password_submit(request: Request, current: str = Form(...), new: str = Form(
     if errors:
         audit(db, request, user, "PASSWORD_CHANGE", "User", user.id,
               "Rejected: %s" % "; ".join(errors), outcome="DENIED")
-        return templates.TemplateResponse("password.html", {
-            "request": request, "user": user, "errors": errors,
+        return templates.TemplateResponse(request, "password.html", {
+            "user": user, "errors": errors,
             "org_name": ORGANISATION_NAME, "duty_station": DUTY_STATION, "currency": CURRENCY,
         }, status_code=400)
 

@@ -87,4 +87,4 @@ def render(request: Request, db, user, template: str, active_nav: str, **context
         "tz_label": TIMEZONE_LABEL,
         "currency": CURRENCY,
     })
-    return templates.TemplateResponse(template, context)
+    return templates.TemplateResponse(request, template, context)
