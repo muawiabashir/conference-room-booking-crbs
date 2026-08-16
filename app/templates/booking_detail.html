@@ -19,21 +19,21 @@
     <section class="card">
       <div class="card-head"><h2 class="card-title">Booking details</h2></div>
       <dl class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 text-[13px]">
-        <div><dt class="kpi-label">Room</dt><dd class="mt-0.5 font-semibold">{{ booking.room.name }}</dd>
+        <div><dt class="kpi-label flex items-center gap-1.5">{{ ui.icon('door', 12) }}Room</dt><dd class="mt-0.5 font-semibold">{{ booking.room.name }}</dd>
           <dd class="text-[12px]" style="color:var(--undp-gray-500)">{{ booking.room.location }} · {{ booking.room.capacity }} seats</dd></div>
-        <div><dt class="kpi-label">Date &amp; time</dt>
+        <div><dt class="kpi-label flex items-center gap-1.5">{{ ui.icon('calendar', 12) }}Date &amp; time</dt>
           <dd class="mt-0.5 font-semibold num">{{ booking.starts_at.strftime('%A %d %B %Y') }}</dd>
           <dd class="text-[12px] num" style="color:var(--undp-gray-500)">
             {{ booking.starts_at.strftime('%H:%M') }}–{{ booking.ends_at.strftime('%H:%M') }}
             ({{ '%.2f'|format(booking.duration_hours) }} h) {{ tz_label }}</dd></div>
-        <div><dt class="kpi-label">Counterpart charged</dt>
+        <div><dt class="kpi-label flex items-center gap-1.5">{{ ui.icon('building', 12) }}Counterpart charged</dt>
           <dd class="mt-0.5 font-semibold">{{ booking.organization.name }}</dd>
           <dd class="text-[12px]" style="color:var(--undp-gray-500)">{{ booking.organization.type_label }}</dd></div>
-        <div><dt class="kpi-label">Charge reference</dt>
+        <div><dt class="kpi-label flex items-center gap-1.5">{{ ui.icon('tag', 12) }}Charge reference</dt>
           <dd class="mt-0.5 font-semibold num">{{ booking.organization.charge_reference }}</dd>
           {% if booking.organization.donor %}<dd class="text-[12px]" style="color:var(--undp-gray-500)">Donor: {{ booking.organization.donor }}</dd>{% endif %}</div>
-        <div><dt class="kpi-label">Attendees</dt><dd class="mt-0.5 font-semibold num">{{ booking.attendees }}</dd></div>
-        <div><dt class="kpi-label">Rate basis applied</dt>
+        <div><dt class="kpi-label flex items-center gap-1.5">{{ ui.icon('users', 12) }}Attendees</dt><dd class="mt-0.5 font-semibold num">{{ booking.attendees }}</dd></div>
+        <div><dt class="kpi-label flex items-center gap-1.5">{{ ui.icon('clock', 12) }}Rate basis applied</dt>
           <dd class="mt-0.5 font-semibold">{{ booking.rate_basis|replace('_',' ')|title }}</dd></div>
         {% if booking.purpose %}
           <div class="sm:col-span-2"><dt class="kpi-label">Purpose</dt><dd class="mt-0.5">{{ booking.purpose }}</dd></div>
@@ -79,8 +79,12 @@
   </div>
 
   <div class="xl:col-span-1 space-y-5">
-    <section class="card">
-      <div class="card-head"><h2 class="card-title">Cost recovery breakdown</h2></div>
+    <section class="card" style="border-top:3px solid var(--undp-blue)">
+      <div class="card-head">
+        <h2 class="card-title flex items-center gap-2">
+          <span class="card-title-icon">{{ ui.icon('receipt', 14) }}</span>Cost recovery breakdown
+        </h2>
+      </div>
       <div class="p-4">
         <dl class="space-y-2.5">
           {% for line in breakdown.lines %}

@@ -10,37 +10,38 @@
 
 {% block content %}
 <section class="card">
-  <form method="get" action="/bookings" class="p-4 grid grid-cols-1 sm:grid-cols-4 gap-3 border-b"
-        style="border-color:var(--undp-gray-200)">
-    <div>
-      <label class="field-label" for="q">Search</label>
-      <input class="input" id="q" name="q" value="{{ f_q }}" placeholder="Title or reference">
-    </div>
-    <div>
-      <label class="field-label" for="status">Status</label>
-      <select class="input" id="status" name="status">
-        <option value="">All statuses</option>
-        {% for s in statuses %}
-          <option value="{{ s.value }}" {% if f_status == s.value %}selected{% endif %}>{{ s.value|title }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div>
-      <label class="field-label" for="org">Counterpart</label>
-      <select class="input" id="org" name="org">
+  <form method="get" action="/bookings" class="p-4 border-b" style="border-color:var(--undp-gray-200)">
+    <div class="flex flex-col lg:flex-row lg:items-center gap-3">
+      <div class="input-icon-wrap flex-1 min-w-[200px]">
+        {{ ui.icon('list', 16) }}
+        <input class="input" id="q" name="q" value="{{ f_q }}" placeholder="Search title or reference…">
+      </div>
+      <select class="input lg:w-56" id="org" name="org" onchange="this.form.submit()">
         <option value="">All counterparts</option>
         {% for o in orgs %}
           <option value="{{ o.id }}" {% if f_org == o.id|string %}selected{% endif %}>{{ o.name }}</option>
         {% endfor %}
       </select>
+      <div class="flex gap-2 shrink-0">
+        <button type="submit" class="btn btn-primary">{{ ui.icon('list', 15) }} Search</button>
+        {% if f_q or f_status or f_org %}<a href="/bookings" class="btn btn-secondary">Reset</a>{% endif %}
+      </div>
     </div>
-    <div class="flex items-end gap-2">
-      <button type="submit" class="btn btn-primary">Filter</button>
-      <a href="/bookings" class="btn btn-secondary">Reset</a>
+
+    <div class="pill-group mt-3">
+      {% set base_qs = {'q': f_q, 'org': f_org} %}
+      <a href="/bookings?{{ base_qs|urlencode }}" class="pill {% if not f_status %}active{% endif %}">All</a>
+      {% for s in statuses %}
+        {% set qs = dict(base_qs, status=s.value) %}
+        <a href="/bookings?{{ qs|urlencode }}" class="pill {% if f_status == s.value %}active{% endif %}">
+          {{ s.value|title }}
+        </a>
+      {% endfor %}
     </div>
+    <input type="hidden" name="status" value="{{ f_status }}">
   </form>
 
-  <div class="overflow-x-auto">
+  <div class="table-wrap overflow-x-auto" style="border:none; border-radius:0">
     <table class="data">
       <thead>
         <tr>
@@ -53,9 +54,13 @@
       <tbody>
         {% for b in bookings %}
           <tr>
-            <td><a href="/bookings/{{ b.id }}" class="font-semibold num" style="color:var(--undp-blue)">{{ b.reference }}</a></td>
+            <td class="whitespace-nowrap"><a href="/bookings/{{ b.id }}" class="font-semibold num" style="color:var(--undp-blue)">{{ b.reference }}</a></td>
             <td class="max-w-[220px] truncate" title="{{ b.title }}">{{ b.title }}</td>
-            <td class="whitespace-nowrap">{{ b.room.name }}</td>
+            <td class="whitespace-nowrap">
+              <span class="inline-flex items-center gap-1.5" style="color:var(--undp-gray-700)">
+                {{ ui.icon('door', 14) }}{{ b.room.name }}
+              </span>
+            </td>
             <td class="num whitespace-nowrap">{{ b.starts_at.strftime('%d %b %Y %H:%M') }}–{{ b.ends_at.strftime('%H:%M') }}</td>
             <td class="max-w-[190px] truncate" title="{{ b.organization.name }}">{{ b.organization.name }}</td>
             <td class="num text-[12px]" style="color:var(--undp-gray-700)">{{ b.organization.charge_reference }}</td>
