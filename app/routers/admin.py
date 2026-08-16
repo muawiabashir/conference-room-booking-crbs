@@ -6,7 +6,9 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..config import EMAIL_ENABLED
 from ..database import get_db
+from ..mailer import send_account_email
 from ..models import AuditLog, Organization, Role, User
 from ..security import (
     PERMISSION_DESCRIPTIONS, PERMISSIONS, audit, hash_password, require,
@@ -14,6 +16,29 @@ from ..security import (
 from ..templating import flash, render
 
 router = APIRouter()
+
+
+def _issue_credentials(request, db, actor, target, temp_password, audit_action, audit_detail,
+                       is_reset):
+    """Email the temporary password if SMTP is configured, else fall back to
+    showing it on-screen to the admin — same behaviour as before this existed."""
+    login_url = str(request.base_url).rstrip("/") + "/login"
+    emailed = EMAIL_ENABLED and send_account_email(
+        target.email, target.full_name, temp_password, login_url, is_reset)
+
+    audit(db, request, actor, audit_action, "User", target.email,
+          "%s | Email: %s" % (audit_detail, "sent" if emailed else "not sent"))
+
+    if emailed:
+        flash(request, "success", "%s. A temporary password has been emailed to %s."
+              % (audit_detail, target.email))
+    elif EMAIL_ENABLED:
+        flash(request, "warn",
+              "%s, but the notification email could not be sent. Temporary password: %s"
+              % (audit_detail, temp_password))
+    else:
+        flash(request, "success", "%s. Temporary password: %s — it must be changed at first sign-in."
+              % (audit_detail, temp_password))
 
 
 @router.get("/admin/users")
@@ -50,11 +75,11 @@ def create_user(request: Request, email: str = Form(...), full_name: str = Form(
     db.add(new_user)
     db.commit()
 
-    audit(db, request, user, "USER_CREATE", "User", new_user.email,
-          "Role %s, counterpart %s" % (role_enum.value, org_id))
-    flash(request, "success",
-          "Account created for %s. Temporary password: %s — it must be changed at first sign-in."
-          % (email, temp_password))
+    _issue_credentials(
+        request, db, user, new_user, temp_password, "USER_CREATE",
+        "Account created for %s (role %s, counterpart %s)" % (email, role_enum.value, org_id),
+        is_reset=False,
+    )
     return RedirectResponse("/admin/users", status_code=303)
 
 
@@ -112,8 +137,10 @@ def reset_password(user_id: int, request: Request, db: Session = Depends(get_db)
     target.failed_logins = 0
     target.locked_until = None
     db.commit()
-    audit(db, request, user, "USER_PASSWORD_RESET", "User", target.email, "Administrative reset")
-    flash(request, "success", "Temporary password for %s: %s" % (target.email, temp_password))
+    _issue_credentials(
+        request, db, user, target, temp_password, "USER_PASSWORD_RESET",
+        "Password reset for %s" % target.email, is_reset=True,
+    )
     return RedirectResponse("/admin/users", status_code=303)
 
 

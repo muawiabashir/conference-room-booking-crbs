@@ -43,6 +43,16 @@ MS_CLIENT_ID = os.getenv("CRBS_MS_CLIENT_ID", "").strip()
 MS_CLIENT_SECRET = os.getenv("CRBS_MS_CLIENT_SECRET", "").strip()
 SSO_ENABLED = bool(MS_TENANT_ID and MS_CLIENT_ID and MS_CLIENT_SECRET)
 
+# Outbound mail for account-creation and password-reset notices. Optional: when
+# unset, the temporary password is shown on-screen to the admin instead (today's
+# behaviour), so this is safe to leave off.
+SMTP_HOST = os.getenv("CRBS_SMTP_HOST", "").strip()
+SMTP_PORT = int(os.getenv("CRBS_SMTP_PORT", "587"))
+SMTP_USERNAME = os.getenv("CRBS_SMTP_USERNAME", "").strip()
+SMTP_PASSWORD = os.getenv("CRBS_SMTP_PASSWORD", "")
+SMTP_FROM = os.getenv("CRBS_SMTP_FROM", "").strip()
+EMAIL_ENABLED = bool(SMTP_HOST and SMTP_USERNAME and SMTP_PASSWORD and SMTP_FROM)
+
 ORGANISATION_NAME = os.getenv("CRBS_ORG_NAME", "UNDP Country Office")
 DUTY_STATION = os.getenv("CRBS_DUTY_STATION", "Khartoum, Sudan")
 CURRENCY = os.getenv("CRBS_CURRENCY", "USD")

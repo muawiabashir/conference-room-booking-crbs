@@ -119,6 +119,31 @@ inherit the original owner's account.
 If the redirect URI is ever wrong, Microsoft's own consent screen says so
 explicitly (`AADSTS50011`) — fix it on the app registration, not in this app.
 
+## 5. (Optional) Email new accounts their temporary password
+
+Without this, creating or resetting a user under **Users & Roles** shows the
+temporary password on-screen to the admin, who relays it to the person
+manually — that still works with nothing configured. With SMTP set, the
+system emails it to the new user directly instead, and only falls back to
+the on-screen password if the send fails for any reason (bad credentials,
+network issue) — account creation itself never fails because of a mail
+problem.
+
+Any SMTP account works — a UNDP Office 365 mailbox, a transactional provider
+(SendGrid, Mailgun, Postmark, SES), or a personal account for testing. Using
+an Office 365 / Exchange Online mailbox from the same UNDP tenant as the SSO
+setup:
+
+- `CRBS_SMTP_HOST` = `smtp.office365.com`
+- `CRBS_SMTP_PORT` = `587`
+- `CRBS_SMTP_USERNAME` = the mailbox's address, e.g. `crbs-noreply@undp.org`
+- `CRBS_SMTP_PASSWORD` = that mailbox's password (an app password if the
+  account has MFA enforced — Exchange Online blocks plain password auth for
+  MFA accounts)
+- `CRBS_SMTP_FROM` = `Conference Room Booking <crbs-noreply@undp.org>`
+
+All four must be set for emailing to activate. Redeploy after setting them.
+
 ## What the settings do
 
 | Setting | Why |
@@ -128,6 +153,7 @@ explicitly (`AADSTS50011`) — fix it on the app registration, not in this app.
 | `CRBS_DATABASE_URL` | `postgresql+psycopg://…?sslmode=require` via Supabase's Session pooler — see step 1 for why the pooler, not the direct connection |
 | `--forwarded-allow-ips '*'` | Tells uvicorn to trust `X-Forwarded-For` from Render's proxy, so the audit trail records the real client IP rather than Render's edge |
 | `CRBS_MS_TENANT_ID` / `CRBS_MS_CLIENT_ID` / `CRBS_MS_CLIENT_SECRET` | Optional — see step 4. All three must be set for the Microsoft sign-in button to appear |
+| `CRBS_SMTP_HOST` / `CRBS_SMTP_PORT` / `CRBS_SMTP_USERNAME` / `CRBS_SMTP_PASSWORD` / `CRBS_SMTP_FROM` | Optional — see step 5. All must be set for new-account emails to send; falls back to the on-screen password otherwise |
 
 ## Operational notes
 
