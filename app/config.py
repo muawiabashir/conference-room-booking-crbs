@@ -35,6 +35,14 @@ SECRET_KEY = _load_secret_key()
 SESSION_HTTPS_ONLY = IS_PRODUCTION
 SHOW_DEMO_CREDENTIALS = not IS_PRODUCTION
 
+# Microsoft Entra ID (Azure AD) single sign-on. Optional: the "Sign in with
+# Microsoft" button only appears once all three are set. Register the app in
+# the UNDP tenant with redirect URI <base-url>/auth/microsoft/callback.
+MS_TENANT_ID = os.getenv("CRBS_MS_TENANT_ID", "").strip()
+MS_CLIENT_ID = os.getenv("CRBS_MS_CLIENT_ID", "").strip()
+MS_CLIENT_SECRET = os.getenv("CRBS_MS_CLIENT_SECRET", "").strip()
+SSO_ENABLED = bool(MS_TENANT_ID and MS_CLIENT_ID and MS_CLIENT_SECRET)
+
 ORGANISATION_NAME = os.getenv("CRBS_ORG_NAME", "UNDP Country Office")
 DUTY_STATION = os.getenv("CRBS_DUTY_STATION", "Khartoum, Sudan")
 CURRENCY = os.getenv("CRBS_CURRENCY", "USD")

@@ -77,6 +77,48 @@ Then sign in at `https://<service-name>.onrender.com` and create the
 remaining users through **Users & Roles**, which issues a temporary password
 and forces a change at first sign-in.
 
+## 4. (Optional) Microsoft sign-in for @undp.org accounts
+
+Adds a "Sign in with Microsoft" option alongside the existing password login,
+so UNDP staff authenticate with their normal Microsoft account instead of a
+system-specific password. Purely additive — the app works exactly as before
+if you skip this section, and the button only appears once all three env
+vars below are set.
+
+**How accounts work with SSO on:** signing in with Microsoft does not create
+an account. The user must already exist — created ahead of time via
+**Users & Roles**, same as today. SSO just replaces "prove who you are with a
+password" with "prove who you are via UNDP's Microsoft login." First
+successful sign-in binds the account to that Microsoft identity (its `oid`
+claim); the identity, not just the email, is what's checked on every login
+after that, so a mailbox reassigned to someone else in the tenant later can't
+inherit the original owner's account.
+
+1. **Register the app** in UNDP's Entra ID tenant (portal.azure.com → Entra ID
+   → App registrations → New registration). Whoever administers that tenant
+   needs to do this, or grant you Application Administrator to do it yourself:
+   - Name: anything recognisable, e.g. "Conference Room Booking (Render)"
+   - Supported account types: **Accounts in this organizational directory
+     only** (single tenant) — this is what restricts sign-in to `@undp.org`,
+     there's no separate domain check in the app
+   - Redirect URI: platform **Web**, value
+     `https://<service-name>.onrender.com/auth/microsoft/callback`
+2. **Create a client secret**: the app registration → Certificates & secrets
+   → New client secret. Copy the value immediately — Azure only shows it once.
+3. **Collect three values**: Directory (tenant) ID and Application (client) ID
+   from the app registration's Overview page, plus the client secret from
+   step 2.
+4. **Set them on Render** (dashboard → service → Environment, or ask me to set
+   them via the API the same way the rest of this deploy was done):
+   - `CRBS_MS_TENANT_ID`
+   - `CRBS_MS_CLIENT_ID`
+   - `CRBS_MS_CLIENT_SECRET`
+5. Redeploy. The button appears on the sign-in page automatically once all
+   three are present — no code change needed.
+
+If the redirect URI is ever wrong, Microsoft's own consent screen says so
+explicitly (`AADSTS50011`) — fix it on the app registration, not in this app.
+
 ## What the settings do
 
 | Setting | Why |
@@ -85,6 +127,7 @@ and forces a change at first sign-in.
 | `CRBS_SECRET_KEY` | Signs session cookies. Rotating it signs everyone out. Render generates and stores this for you |
 | `CRBS_DATABASE_URL` | `postgresql+psycopg://…?sslmode=require` via Supabase's Session pooler — see step 1 for why the pooler, not the direct connection |
 | `--forwarded-allow-ips '*'` | Tells uvicorn to trust `X-Forwarded-For` from Render's proxy, so the audit trail records the real client IP rather than Render's edge |
+| `CRBS_MS_TENANT_ID` / `CRBS_MS_CLIENT_ID` / `CRBS_MS_CLIENT_SECRET` | Optional — see step 4. All three must be set for the Microsoft sign-in button to appear |
 
 ## Operational notes
 

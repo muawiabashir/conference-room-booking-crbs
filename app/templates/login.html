@@ -52,7 +52,25 @@
         <div class="alert alert-error mt-5" role="alert">{{ error }}</div>
       {% endif %}
 
-      <form method="post" action="/login" class="mt-6 space-y-4" novalidate>
+      {% if sso_enabled %}
+      <a href="/auth/microsoft/login?next={{ next | urlencode }}"
+         class="btn btn-secondary w-full mt-5 inline-flex items-center justify-center gap-2">
+        <svg width="16" height="16" viewBox="0 0 21 21" aria-hidden="true">
+          <rect width="9" height="9" x="1" y="1" fill="#f25022"/>
+          <rect width="9" height="9" x="11" y="1" fill="#7fba00"/>
+          <rect width="9" height="9" x="1" y="11" fill="#00a4ef"/>
+          <rect width="9" height="9" x="11" y="11" fill="#ffb900"/>
+        </svg>
+        Sign in with Microsoft
+      </a>
+      <div class="flex items-center gap-3 my-5" style="color:var(--undp-gray-500)">
+        <div class="flex-1 h-px" style="background:#E4E9EE"></div>
+        <span class="text-[11px] uppercase tracking-wide">or use a password</span>
+        <div class="flex-1 h-px" style="background:#E4E9EE"></div>
+      </div>
+      {% endif %}
+
+      <form method="post" action="/login" class="{{ 'space-y-4' if sso_enabled else 'mt-6 space-y-4' }}" novalidate>
         <input type="hidden" name="next" value="{{ next }}">
         <div>
           <label class="field-label required" for="email">Email address</label>

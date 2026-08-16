@@ -77,6 +77,10 @@ class User(Base):
     email = mapped_column(String(180), unique=True, nullable=False, index=True)
     full_name = mapped_column(String(160), nullable=False)
     password_hash = mapped_column(String(255), nullable=False)
+    # Microsoft Entra ID "oid" claim, bound on first successful SSO sign-in.
+    # Preferred over email for matching on later logins so a mailbox reassigned
+    # to someone else in the tenant can't inherit the old owner's account.
+    sso_subject = mapped_column(String(160), unique=True, nullable=True, index=True)
     role = mapped_column(Enum(Role), nullable=False, default=Role.REQUESTER)
     organization_id = mapped_column(ForeignKey("organizations.id"), nullable=True)
     is_active = mapped_column(Boolean, nullable=False, default=True)
