@@ -5,7 +5,9 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..config import CALENDAR_SYNC_ENABLED
 from ..database import get_db
+from .. import graph
 from ..models import (
     Booking, BookingService, BookingStatus, Organization, Room, ServiceItem, utcnow,
 )
@@ -274,8 +276,15 @@ def decide(booking_id: int, request: Request, decision: str = Form(...),
     db.commit()
 
     audit(db, request, user, "BOOKING_%s" % booking.status.value, "Booking", booking.reference, note)
-    flash(request, "success", "Booking %s has been %s."
-          % (booking.reference, booking.status.value.lower()))
+    message = "Booking %s has been %s." % (booking.reference, booking.status.value.lower())
+    if booking.status == BookingStatus.APPROVED and CALENDAR_SYNC_ENABLED:
+        event_id = graph.create_event(booking)
+        if event_id:
+            booking.graph_event_id = event_id
+            db.commit()
+        else:
+            message += " Calendar sync failed — check server logs."
+    flash(request, "success", message)
     return RedirectResponse("/bookings/%d" % booking_id, status_code=303)
 
 
@@ -296,9 +305,14 @@ def cancel(booking_id: int, request: Request, reason: str = Form(""),
     booking.room_charge = 0.0
     booking.services_charge = 0.0
     booking.admin_fee = 0.0
+
+    event_id, booking.graph_event_id = booking.graph_event_id, None
     db.commit()
     audit(db, request, user, "BOOKING_CANCELLED", "Booking", booking.reference, reason)
-    flash(request, "success", "Booking %s cancelled; charges reversed." % booking.reference)
+    message = "Booking %s cancelled; charges reversed." % booking.reference
+    if event_id and not graph.delete_event(event_id):
+        message += " Calendar sync failed — check server logs."
+    flash(request, "success", message)
     return RedirectResponse("/bookings/%d" % booking_id, status_code=303)
 
 

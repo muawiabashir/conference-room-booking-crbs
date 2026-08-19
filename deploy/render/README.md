@@ -144,6 +144,49 @@ setup:
 
 All four must be set for emailing to activate. Redeploy after setting them.
 
+## 6. (Optional) Sync approved bookings to a shared Outlook room calendar
+
+Every booking that gets approved creates a matching event on a shared Outlook
+mailbox's calendar (e.g. a room resource mailbox like
+`undp-sd.conference.room@undp.org`), so anyone checking that calendar in
+Outlook — including people who never touch this system — sees it as busy.
+Cancelling an approved booking removes the event again. Rejected/pending
+bookings never touch the calendar at all.
+
+This reuses the **same Entra ID app registration** as SSO (step 4) — no new
+app to register — but needs one more thing added to it, and it's a bigger
+ask than SSO's sign-in scopes: an **Application permission**, which only a
+tenant admin can consent to (unlike the delegated `openid`/`email`/`profile`
+scopes SSO uses, which any user implicitly consents to just by signing in).
+
+1. Same app registration → **API permissions** → **Add a permission** →
+   **Microsoft Graph** → **Application permissions** (not Delegated) →
+   search for and check **Calendars.ReadWrite** → **Add permissions**.
+2. Still on that page: **Grant admin consent for [tenant]** → confirm. This
+   button only works for a Global Administrator or Privileged Role
+   Administrator — if it's greyed out, that's who needs to click it, or who
+   needs to grant it via PowerShell/Graph Explorer instead.
+3. **Recommended, not required**: an app holding `Calendars.ReadWrite` as an
+   Application permission can, by default, read and write *every* mailbox's
+   calendar in the tenant — not just the room's. Whoever administers Exchange
+   Online can scope it down to just the room mailbox with an Application
+   Access Policy:
+   ```powershell
+   New-ApplicationAccessPolicy -AppId <client-id> `
+     -PolicyScopeGroupId undp-sd.conference.room@undp.org `
+     -AccessRight RestrictAccess -Description "CRBS: room calendar only"
+   ```
+   Skipping this doesn't break anything — it's a defense-in-depth step, not
+   a prerequisite.
+4. Set on Render: `CRBS_ROOM_CALENDAR_EMAIL` = `undp-sd.conference.room@undp.org`.
+   (`CRBS_MS_TENANT_ID`/`CLIENT_ID`/`CLIENT_SECRET` are already set from SSO —
+   nothing new needed there.)
+5. Redeploy.
+
+A failed sync never blocks the approval or cancellation itself — the admin
+sees "Calendar sync failed — check server logs" appended to the usual
+success message, and the full error lands in Render's logs.
+
 ## What the settings do
 
 | Setting | Why |
@@ -154,6 +197,8 @@ All four must be set for emailing to activate. Redeploy after setting them.
 | `--forwarded-allow-ips '*'` | Tells uvicorn to trust `X-Forwarded-For` from Render's proxy, so the audit trail records the real client IP rather than Render's edge |
 | `CRBS_MS_TENANT_ID` / `CRBS_MS_CLIENT_ID` / `CRBS_MS_CLIENT_SECRET` | Optional — see step 4. All three must be set for the Microsoft sign-in button to appear |
 | `CRBS_SMTP_HOST` / `CRBS_SMTP_PORT` / `CRBS_SMTP_USERNAME` / `CRBS_SMTP_PASSWORD` / `CRBS_SMTP_FROM` | Optional — see step 5. All must be set for new-account emails to send; falls back to the on-screen password otherwise |
+| `CRBS_ROOM_CALENDAR_EMAIL` | Optional — see step 6. The shared mailbox approved bookings sync to; reuses the SSO app registration's tenant/client credentials |
+| `CRBS_TZ_NAME` | IANA time zone (default `Africa/Khartoum`) used only for the Outlook calendar event's time zone field — separate from `CRBS_TZ_LABEL`, which is just display text |
 
 ## Operational notes
 

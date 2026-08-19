@@ -30,10 +30,10 @@ app.include_router(reference.router)
 app.include_router(admin.router)
 
 
-def _add_column_if_missing(table, column, ddl_type):
+def _add_column_if_missing(table, column, ddl_type, unique=False):
     # create_all only creates missing tables, never alters an existing one, so a
     # newly added model column has to be bolted on by hand. There is no Alembic
-    # here — this is the one column that has ever needed it.
+    # here — these are the only columns that have ever needed it.
     insp = inspect(engine)
     if table not in insp.get_table_names():
         return
@@ -42,10 +42,11 @@ def _add_column_if_missing(table, column, ddl_type):
         return
     with engine.begin() as conn:
         conn.execute(text("ALTER TABLE %s ADD COLUMN %s %s" % (table, column, ddl_type)))
-        conn.execute(text(
-            "CREATE UNIQUE INDEX IF NOT EXISTS ix_%s_%s ON %s (%s)"
-            % (table, column, table, column)
-        ))
+        if unique:
+            conn.execute(text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS ix_%s_%s ON %s (%s)"
+                % (table, column, table, column)
+            ))
 
 
 @app.on_event("startup")
@@ -58,10 +59,12 @@ def on_startup():
     except (OperationalError, ProgrammingError, IntegrityError):
         Base.metadata.create_all(bind=engine, checkfirst=True)
 
-    try:
-        _add_column_if_missing("users", "sso_subject", "VARCHAR(160)")
-    except (OperationalError, ProgrammingError):
-        pass  # another worker already added it
+    for args in [("users", "sso_subject", "VARCHAR(160)", True),
+                 ("bookings", "graph_event_id", "VARCHAR(200)", False)]:
+        try:
+            _add_column_if_missing(args[0], args[1], args[2], unique=args[3])
+        except (OperationalError, ProgrammingError):
+            pass  # another worker already added it
 
     db = SessionLocal()
     try:

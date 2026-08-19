@@ -57,6 +57,17 @@ ORGANISATION_NAME = os.getenv("CRBS_ORG_NAME", "UNDP Country Office")
 DUTY_STATION = os.getenv("CRBS_DUTY_STATION", "Khartoum, Sudan")
 CURRENCY = os.getenv("CRBS_CURRENCY", "USD")
 TIMEZONE_LABEL = os.getenv("CRBS_TZ_LABEL", "EAT (UTC+2)")
+# IANA identifier, distinct from the display-only TIMEZONE_LABEL above — this
+# one has to be something Microsoft Graph actually understands.
+TZ_NAME = os.getenv("CRBS_TZ_NAME", "Africa/Khartoum")
+
+# Sync approved bookings to a shared Outlook room calendar via Microsoft Graph.
+# Reuses the Entra ID app registration set up for SSO — that registration
+# additionally needs the Calendars.ReadWrite *application* permission (tenant
+# admin consent required) for this to work. Optional: stays inactive without
+# CRBS_ROOM_CALENDAR_EMAIL set, same as SSO without its three vars.
+ROOM_CALENDAR_EMAIL = os.getenv("CRBS_ROOM_CALENDAR_EMAIL", "").strip()
+CALENDAR_SYNC_ENABLED = bool(MS_TENANT_ID and MS_CLIENT_ID and MS_CLIENT_SECRET and ROOM_CALENDAR_EMAIL)
 
 SESSION_MAX_AGE_SECONDS = 60 * 60 * 8
 MAX_FAILED_LOGINS = 5

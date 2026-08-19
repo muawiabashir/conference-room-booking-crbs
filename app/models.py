@@ -212,6 +212,9 @@ class Booking(Base):
     decision_note = mapped_column(Text, nullable=True)
     invoice_id = mapped_column(ForeignKey("invoices.id"), nullable=True)
     created_at = mapped_column(DateTime, nullable=False, default=utcnow)
+    # Microsoft Graph event id on the shared room calendar, set on approval and
+    # cleared on cancellation. Null if calendar sync is off or hasn't run yet.
+    graph_event_id = mapped_column(String(200), nullable=True)
 
     room = relationship("Room", lazy="joined")
     organization = relationship("Organization", lazy="joined")
