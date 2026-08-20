@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from ..config import CALENDAR_SYNC_ENABLED
 from ..database import get_db
 from .. import graph
+from ..ics import booking_ics
 from ..models import (
     Booking, BookingService, BookingStatus, Organization, Room, ServiceItem, utcnow,
 )
@@ -98,6 +99,19 @@ def booking_detail(booking_id: int, request: Request, db: Session = Depends(get_
     )
     return render(request, db, user, "booking_detail.html", "bookings",
                   booking=booking, breakdown=breakdown)
+
+
+@router.get("/bookings/{booking_id}/ics")
+def booking_ics_download(booking_id: int, db: Session = Depends(get_db),
+                         user=Depends(require("booking.view.own"))):
+    booking = _get_booking(db, user, booking_id)
+    if booking.status in (BookingStatus.CANCELLED, BookingStatus.REJECTED):
+        raise HTTPException(400, "This booking is closed and can no longer be added to a calendar.")
+    return Response(
+        content=booking_ics(booking),
+        media_type="text/calendar",
+        headers={"Content-Disposition": 'attachment; filename="%s.ics"' % booking.reference},
+    )
 
 
 @router.get("/bookings/{booking_id}/edit")

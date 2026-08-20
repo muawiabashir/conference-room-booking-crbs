@@ -8,6 +8,11 @@
     {% if can('booking.edit') and booking.status.value in ('DRAFT','PENDING') %}
       <a href="/bookings/{{ booking.id }}/edit" class="btn btn-secondary btn-sm">Amend</a>
     {% endif %}
+    {% if booking.status.value not in ('CANCELLED','REJECTED') %}
+      <a href="/bookings/{{ booking.id }}/ics" class="btn btn-secondary btn-sm no-print">
+        {{ ui.icon('download', 14) }} Add to my calendar
+      </a>
+    {% endif %}
     <a href="/bookings" class="btn btn-secondary btn-sm">{{ ui.icon('arrow-left', 14) }} All bookings</a>
   </div>
 {% endblock %}

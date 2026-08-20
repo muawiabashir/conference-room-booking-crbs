@@ -8,6 +8,7 @@ itsdangerous>=2.1
 python-dateutil>=2.8
 Authlib>=1.3
 httpx>=0.27
+tzdata>=2024.1
 
 # Production server and PostgreSQL driver. Kept in the single requirements file
 # because the Azure App Service build (Oryx) only installs from requirements.txt.
