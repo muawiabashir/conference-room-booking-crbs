@@ -86,11 +86,15 @@
         <button type="submit" class="btn btn-primary w-full">Sign in</button>
       </form>
 
-      <p class="mt-5 text-center">
-        <a href="/public/calendar" class="text-[12.5px] font-semibold inline-flex items-center gap-1.5" style="color:var(--undp-blue)">
-          {{ ui.icon('calendar', 14) }} View room availability without signing in
-        </a>
-      </p>
+      <a href="/public/calendar"
+         class="card card-interactive mt-5 p-3.5 flex items-center gap-3" style="text-decoration:none">
+        <span class="card-title-icon" style="width:38px;height:38px">{{ ui.icon('calendar', 18) }}</span>
+        <span class="flex-1 min-w-0">
+          <span class="block text-[13px] font-semibold" style="color:var(--undp-blue-dark)">Room availability</span>
+          <span class="block text-[11.5px]" style="color:var(--undp-gray-500)">Check free/busy without signing in</span>
+        </span>
+        <span class="rotate-180 flex shrink-0" style="color:var(--undp-gray-300)">{{ ui.icon('arrow-left', 16) }}</span>
+      </a>
 
       {% if show_demo_credentials %}
       <div class="mt-8 p-3 rounded text-[11.5px]" style="background:var(--undp-blue-tint);color:#01426A">
