@@ -86,6 +86,12 @@
         <button type="submit" class="btn btn-primary w-full">Sign in</button>
       </form>
 
+      <p class="mt-5 text-center">
+        <a href="/public/calendar" class="text-[12.5px] font-semibold inline-flex items-center gap-1.5" style="color:var(--undp-blue)">
+          {{ ui.icon('calendar', 14) }} View room availability without signing in
+        </a>
+      </p>
+
       {% if show_demo_credentials %}
       <div class="mt-8 p-3 rounded text-[11.5px]" style="background:var(--undp-blue-tint);color:#01426A">
         <strong>Demo accounts</strong> (password <code class="font-mono">Undp@2026!</code>)<br>

@@ -9,7 +9,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from .config import BASE_DIR, SECRET_KEY, SESSION_HTTPS_ONLY, SESSION_MAX_AGE_SECONDS
 from .database import Base, SessionLocal, engine
 from .pricing import ensure_rate_cards
-from .routers import admin, auth, bookings, dashboard, finance, reference
+from .routers import admin, auth, bookings, dashboard, finance, public, reference
 from .templating import templates
 
 app = FastAPI(title="Conference Room Booking & Cost Recovery System", docs_url=None, redoc_url=None)
@@ -23,6 +23,7 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
 app.include_router(auth.router)
+app.include_router(public.router)
 app.include_router(dashboard.router)
 app.include_router(bookings.router)
 app.include_router(finance.router)

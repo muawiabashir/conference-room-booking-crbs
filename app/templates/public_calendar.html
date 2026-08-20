@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Room availability · Conference Room Booking &amp; Cost Recovery</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<link rel="stylesheet" href="/static/undp.css">
+</head>
+<body>
+<div class="min-h-screen flex flex-col" style="background:var(--undp-gray-100)">
+
+  <div class="undp-bar text-white px-6 py-3 flex items-center justify-between gap-4">
+    <div class="flex items-center gap-3 min-w-0">
+      <div class="w-9 h-9 bg-white flex items-center justify-center shrink-0" aria-hidden="true">
+        <span style="color:var(--undp-blue);font-weight:800;font-size:13px;letter-spacing:-.04em">UNDP</span>
+      </div>
+      <div class="leading-tight min-w-0">
+        <div class="text-white text-[13px] font-bold truncate">Room availability</div>
+        <div class="text-[10px] truncate" style="color:#8FAEC6">{{ org_name }} · {{ duty_station }}</div>
+      </div>
+    </div>
+    <a href="/login?next=/calendar" class="btn btn-primary btn-sm shrink-0">Sign in to book</a>
+  </div>
+  <div class="undp-accent-rule"></div>
+
+  <main class="flex-1 p-6">
+    <div class="max-w-[1100px] mx-auto space-y-4">
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 class="text-[17px] font-bold" style="color:var(--undp-blue-dark)">Room availability</h1>
+          <p class="text-[12px] mt-0.5" style="color:var(--undp-gray-500)">
+            {{ target.strftime('%A, %d %B %Y') }} · {{ tz_label }} · shows free/busy only —
+            <a href="/login?next=/calendar" style="color:var(--undp-blue)">sign in</a> for meeting details or to request a room
+          </p>
+        </div>
+        <div class="flex items-center gap-2">
+          <a href="/public/calendar?day={{ prev_day }}" class="btn btn-secondary btn-sm" aria-label="Previous day">{{ ui.icon('arrow-left', 14) }}</a>
+          <a href="/public/calendar?day={{ today }}" class="btn btn-secondary btn-sm">Today</a>
+          <a href="/public/calendar?day={{ next_day }}" class="btn btn-secondary btn-sm" aria-label="Next day">
+            <span class="rotate-180 flex">{{ ui.icon('arrow-left', 14) }}</span>
+          </a>
+          <form method="get" action="/public/calendar" class="ml-1">
+            <label class="sr-only" for="day">Jump to date</label>
+            <input class="input btn-sm" type="date" id="day" name="day" value="{{ target.isoformat() }}"
+                   onchange="this.form.submit()" style="min-height:30px;width:150px">
+          </form>
+        </div>
+      </div>
+
+      <section class="card overflow-x-auto">
+        <div class="min-w-[760px] flex">
+
+          <div class="w-16 shrink-0 pt-9 border-r" style="border-color:var(--undp-gray-200)">
+            {% for hour in hours[:-1] %}
+              <div class="relative" style="height:{{ 100 / (hours|length - 1) }}%;min-height:52px">
+                <span class="absolute -top-2 right-2 text-[10.5px] num" style="color:var(--undp-gray-500)">
+                  {{ '%02d:00'|format(hour) }}
+                </span>
+              </div>
+            {% endfor %}
+          </div>
+
+          <div class="flex-1 grid" style="grid-template-columns:repeat({{ rooms|length or 1 }},minmax(0,1fr))">
+            {% for room in rooms %}
+              <div class="border-r last:border-r-0" style="border-color:var(--undp-gray-200)">
+                <div class="h-9 px-2 flex flex-col justify-center border-b sticky top-0 bg-white"
+                     style="border-color:var(--undp-gray-300)">
+                  <div class="text-[11.5px] font-bold truncate" title="{{ room.name }}">{{ room.name }}</div>
+                  <div class="text-[10px]" style="color:var(--undp-gray-500)">{{ room.capacity }} seats</div>
+                </div>
+
+                <div class="relative" style="height:{{ (hours|length - 1) * 52 }}px">
+                  {% for _ in hours[:-1] %}<div class="cal-slot" style="height:52px"></div>{% endfor %}
+
+                  {% for ev in events.get(room.id, []) %}
+                    <div class="cal-event absolute left-1 right-1 {% if ev.pending %}pending{% endif %}"
+                         style="top:{{ ev.top_pct }}%;height:{{ ev.height_pct }}%"
+                         title="{{ ev.starts_at.strftime('%H:%M') }}–{{ ev.ends_at.strftime('%H:%M') }} · {{ 'Tentative' if ev.pending else 'Reserved' }}">
+                      <div class="font-semibold truncate">{{ 'Tentative' if ev.pending else 'Reserved' }}</div>
+                      <div class="truncate opacity-90 num">{{ ev.starts_at.strftime('%H:%M') }}–{{ ev.ends_at.strftime('%H:%M') }}</div>
+                    </div>
+                  {% endfor %}
+                </div>
+              </div>
+            {% else %}
+              <div class="p-6">
+                <div class="empty-state">
+                  <p class="text-[13px]">No bookable rooms configured.</p>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="px-4 py-3 border-t flex flex-wrap items-center gap-5 text-[11.5px]"
+             style="border-color:var(--undp-gray-200);color:var(--undp-gray-700)">
+          <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm" style="background:var(--undp-blue)"></span>Reserved</span>
+          <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm" style="background:#8A6400"></span>Tentative</span>
+          <span>Working day shown {{ '%02d:00'|format(hours[0]) }}–{{ '%02d:00'|format(hours[-1]) }}.</span>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="px-6 py-3 text-[11px] border-t"
+          style="color:var(--undp-gray-500);border-color:var(--undp-gray-200)">
+    Conference Room Booking &amp; Cost Recovery System — {{ org_name }}. Meeting details are only
+    visible to signed-in staff.
+  </footer>
+</div>
+</body>
+</html>
