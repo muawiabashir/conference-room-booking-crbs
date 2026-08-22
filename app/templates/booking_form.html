@@ -161,21 +161,53 @@
 </form>
 
 <script>
-var ROOM_IMAGES = {
+var ROOM_GALLERY_DATA = {
   {% for r in rooms %}
-  "{{ r.id }}": [{% for img in r.images %}{{ img.id }}{{ ',' if not loop.last }}{% endfor %}]{{ ',' if not loop.last }}
+  "{{ r.id }}": {
+    "name": {{ r.name|tojson }},
+    "location": {{ r.location|tojson }},
+    "capacity": {{ r.capacity }},
+    "images": [{% for img in r.images %}{{ img.id }}{{ ',' if not loop.last }}{% endfor %}]
+  }{{ ',' if not loop.last }}
   {% endfor %}
 };
 </script>
 
-<div id="lightbox" class="fixed inset-0 hidden items-center justify-center p-6" style="background:rgba(0,0,0,.85);z-index:60" onclick="closeLightbox()">
-  <img id="lightbox-img" src="" alt="" style="max-width:92vw;max-height:88vh;object-fit:contain;border-radius:4px">
+<div id="lightbox" class="fixed inset-0 hidden items-center justify-center p-6" style="background:rgba(0,0,0,.9);z-index:60" onclick="if (event.target === this) closeLightbox()">
+  <button type="button" aria-label="Previous photo" onclick="event.stopPropagation();stepLightbox(-1)"
+          class="hidden sm:flex items-center justify-center" id="lightbox-prev"
+          style="position:absolute;left:16px;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:999px;background:rgba(255,255,255,.12);color:#fff;border:none">
+    {{ ui.icon('arrow-left', 18) }}
+  </button>
+  <img id="lightbox-img" src="" alt="" style="max-width:88vw;max-height:86vh;object-fit:contain;border-radius:4px">
+  <button type="button" aria-label="Next photo" onclick="event.stopPropagation();stepLightbox(1)"
+          class="hidden sm:flex items-center justify-center" id="lightbox-next"
+          style="position:absolute;right:16px;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:999px;background:rgba(255,255,255,.12);color:#fff;border:none">
+    <span class="rotate-180 flex">{{ ui.icon('arrow-left', 18) }}</span>
+  </button>
+  <div id="lightbox-count" class="text-[12px]" style="position:absolute;bottom:18px;left:50%;transform:translateX(-50%);color:#fff9"></div>
   <button type="button" class="btn btn-secondary btn-sm" style="position:absolute;top:16px;right:16px" onclick="closeLightbox()">{{ ui.icon('x', 14) }} Close</button>
 </div>
 
 <script>
-function openLightbox(id) {
-  document.getElementById('lightbox-img').src = '/rooms/images/' + id;
+var LIGHTBOX_IDS = [];
+var LIGHTBOX_POS = 0;
+
+function showLightboxImage() {
+  document.getElementById('lightbox-img').src = '/rooms/images/' + LIGHTBOX_IDS[LIGHTBOX_POS];
+  document.getElementById('lightbox-count').textContent = (LIGHTBOX_POS + 1) + ' / ' + LIGHTBOX_IDS.length;
+  var multi = LIGHTBOX_IDS.length > 1;
+  document.getElementById('lightbox-prev').style.display = multi ? '' : 'none';
+  document.getElementById('lightbox-next').style.display = multi ? '' : 'none';
+}
+function stepLightbox(delta) {
+  LIGHTBOX_POS = (LIGHTBOX_POS + delta + LIGHTBOX_IDS.length) % LIGHTBOX_IDS.length;
+  showLightboxImage();
+}
+function openLightbox(ids, startIndex) {
+  LIGHTBOX_IDS = ids;
+  LIGHTBOX_POS = startIndex || 0;
+  showLightboxImage();
   var lb = document.getElementById('lightbox');
   lb.classList.remove('hidden');
   lb.classList.add('flex');
@@ -185,17 +217,67 @@ function closeLightbox() {
   lb.classList.add('hidden');
   lb.classList.remove('flex');
 }
-function renderRoomGallery() {
-  var roomId = document.getElementById('f-room_id').value;
+document.addEventListener('keydown', function (e) {
+  if (document.getElementById('lightbox').classList.contains('hidden')) { return; }
+  if (e.key === 'Escape') { closeLightbox(); }
+  if (e.key === 'ArrowRight') { stepLightbox(1); }
+  if (e.key === 'ArrowLeft') { stepLightbox(-1); }
+});
+
+var HERO_POS = 0;
+var ROOM_PLACEHOLDER_ICON = {{ ui.icon('image', 34)|tojson }};
+var PHOTO_GALLERY_ICON = {{ ui.icon('image', 14)|tojson }};
+
+function setHeroImage(index) {
   var wrap = document.getElementById('room-gallery');
-  var ids = ROOM_IMAGES[roomId] || [];
-  if (!ids.length) { wrap.innerHTML = ''; return; }
-  var html = '<div class="flex gap-2 flex-wrap mt-1 mb-2">';
-  ids.forEach(function (id) {
-    html += '<img src="/rooms/images/' + id + '" alt="Room photo" ' +
-            'class="w-20 h-16 rounded object-cover cursor-pointer" ' +
-            'style="border:1px solid var(--undp-gray-200)" onclick="openLightbox(' + id + ')">';
+  var room = wrap.__room;
+  if (!room) { return; }
+  HERO_POS = index;
+  wrap.querySelector('#room-hero-img').src = '/rooms/images/' + room.images[index];
+  wrap.querySelectorAll('.room-hero-dot').forEach(function (dot, i) {
+    dot.style.background = (i === index) ? '#fff' : 'rgba(255,255,255,.45)';
   });
+}
+
+function renderRoomGallery() {
+  var select = document.getElementById('f-room_id');
+  var roomId = select.value;
+  var wrap = document.getElementById('room-gallery');
+  var room = ROOM_GALLERY_DATA[roomId];
+  wrap.__room = room;
+  HERO_POS = 0;
+
+  if (!room) { wrap.innerHTML = ''; return; }
+
+  var hasPhotos = room.images.length > 0;
+  var bg = hasPhotos ? '/rooms/images/' + room.images[0] : '';
+
+  var html = '<div class="relative rounded overflow-hidden" style="aspect-ratio:21/7;background:var(--undp-gray-200)">';
+  if (hasPhotos) {
+    html += '<img id="room-hero-img" src="' + bg + '" alt="" style="width:100%;height:100%;object-fit:cover;display:block">';
+    html += '<div class="absolute inset-0" style="background:linear-gradient(to top, rgba(4,20,33,.78), rgba(4,20,33,0) 60%)"></div>';
+  } else {
+    html += '<div class="absolute inset-0 flex items-center justify-center" style="color:var(--undp-gray-400)">' + ROOM_PLACEHOLDER_ICON + '</div>';
+  }
+  html += '<div class="absolute left-4 right-4 bottom-3 text-white">';
+  html += '<div class="text-lg sm:text-xl font-bold leading-tight">' + room.name + '</div>';
+  html += '<div class="text-[12.5px]" style="opacity:.9">' + room.location + ' · ' + room.capacity + ' seats</div>';
+  if (hasPhotos) {
+    html += '<button type="button" onclick="openLightbox(' + JSON.stringify(room.images) + ', HERO_POS)" ' +
+            'class="inline-flex items-center gap-1.5 mt-2 text-[12px] font-semibold" style="color:#fff">' +
+            PHOTO_GALLERY_ICON + ' Photo gallery</button>';
+  }
+  html += '</div>';
+  if (room.images.length > 1) {
+    html += '<div class="absolute right-3 bottom-3 flex gap-1.5">';
+    room.images.forEach(function (id, i) {
+      html += '<button type="button" class="room-hero-dot" aria-label="Photo ' + (i + 1) + '" ' +
+              'onclick="setHeroImage(' + i + ')" ' +
+              'style="width:8px;height:8px;border-radius:999px;border:none;padding:0;' +
+              'background:' + (i === 0 ? '#fff' : 'rgba(255,255,255,.45)') + '"></button>';
+    });
+    html += '</div>';
+  }
   html += '</div>';
   wrap.innerHTML = html;
 }
