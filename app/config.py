@@ -65,9 +65,9 @@ TZ_NAME = os.getenv("CRBS_TZ_NAME", "Africa/Khartoum")
 # Reuses the Entra ID app registration set up for SSO — that registration
 # additionally needs the Calendars.ReadWrite *application* permission (tenant
 # admin consent required) for this to work. Optional: stays inactive without
-# CRBS_ROOM_CALENDAR_EMAIL set, same as SSO without its three vars.
+# Fallback mailbox used only for rooms that don't have their own email set.
 ROOM_CALENDAR_EMAIL = os.getenv("CRBS_ROOM_CALENDAR_EMAIL", "").strip()
-CALENDAR_SYNC_ENABLED = bool(MS_TENANT_ID and MS_CLIENT_ID and MS_CLIENT_SECRET and ROOM_CALENDAR_EMAIL)
+CALENDAR_SYNC_ENABLED = bool(MS_TENANT_ID and MS_CLIENT_ID and MS_CLIENT_SECRET)
 
 SESSION_MAX_AGE_SECONDS = 60 * 60 * 8
 MAX_FAILED_LOGINS = 5

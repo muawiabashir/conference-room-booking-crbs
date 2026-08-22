@@ -144,14 +144,14 @@ setup:
 
 All four must be set for emailing to activate. Redeploy after setting them.
 
-## 6. (Optional) Sync approved bookings to a shared Outlook room calendar
+## 6. (Optional) Sync approved bookings directly to each room's Outlook calendar
 
-Every booking that gets approved creates a matching event on a shared Outlook
-mailbox's calendar (e.g. a room resource mailbox like
-`undp-sd.conference.room@undp.org`), so anyone checking that calendar in
-Outlook — including people who never touch this system — sees it as busy.
-Cancelling an approved booking removes the event again. Rejected/pending
-bookings never touch the calendar at all.
+Every booking that gets approved creates a matching event on that room's own
+Outlook mailbox calendar (set per-room under **Rooms** → *Room email
+account*), so anyone checking that room's calendar in Outlook — including
+people who never touch this system — sees it as busy. Cancelling an approved
+booking removes the event again. Rejected/pending bookings never touch the
+calendar at all. Rooms with no email set are simply skipped.
 
 This reuses the **same Entra ID app registration** as SSO (step 4) — no new
 app to register — but needs one more thing added to it, and it's a bigger
@@ -168,19 +168,21 @@ scopes SSO uses, which any user implicitly consents to just by signing in).
    needs to grant it via PowerShell/Graph Explorer instead.
 3. **Recommended, not required**: an app holding `Calendars.ReadWrite` as an
    Application permission can, by default, read and write *every* mailbox's
-   calendar in the tenant — not just the room's. Whoever administers Exchange
-   Online can scope it down to just the room mailbox with an Application
-   Access Policy:
+   calendar in the tenant — not just the rooms'. Whoever administers Exchange
+   Online can scope it down to just the room mailboxes with an Application
+   Access Policy (repeat per room, or point `-PolicyScopeGroupId` at a mail
+   -enabled security group containing all the room mailboxes):
    ```powershell
    New-ApplicationAccessPolicy -AppId <client-id> `
-     -PolicyScopeGroupId undp-sd.conference.room@undp.org `
-     -AccessRight RestrictAccess -Description "CRBS: room calendar only"
+     -PolicyScopeGroupId <room-mailbox-or-group>@undp.org `
+     -AccessRight RestrictAccess -Description "CRBS: room calendars only"
    ```
    Skipping this doesn't break anything — it's a defense-in-depth step, not
    a prerequisite.
-4. Set on Render: `CRBS_ROOM_CALENDAR_EMAIL` = `undp-sd.conference.room@undp.org`.
-   (`CRBS_MS_TENANT_ID`/`CLIENT_ID`/`CLIENT_SECRET` are already set from SSO —
-   nothing new needed there.)
+4. `CRBS_MS_TENANT_ID`/`CLIENT_ID`/`CLIENT_SECRET` are already set from SSO —
+   nothing new needed there. `CRBS_ROOM_CALENDAR_EMAIL` is optional now: only
+   set it if you want one fallback mailbox for rooms that don't have their
+   own email configured.
 5. Redeploy.
 
 A failed sync never blocks the approval or cancellation itself — the admin

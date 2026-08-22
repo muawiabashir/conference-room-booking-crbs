@@ -1,10 +1,13 @@
-"""Sync approved bookings to a shared Outlook room calendar via Microsoft Graph.
+"""Sync approved bookings to each room's own Outlook calendar via Microsoft Graph.
 
 Uses the OAuth2 client-credentials flow (app-only auth, no signed-in user
 involved) against the same Entra ID app registration used for SSO. That
 registration additionally needs the Calendars.ReadWrite *application*
-permission, with tenant admin consent, to create/delete events on
-ROOM_CALENDAR_EMAIL's calendar.
+permission, with tenant admin consent, to create/delete events on a room's
+mailbox calendar.
+
+Targets booking.room.email; rooms without one fall back to the single
+ROOM_CALENDAR_EMAIL mailbox if set, and are skipped entirely otherwise.
 
 Best-effort throughout: a Graph failure is logged and reported back to the
 caller, but never raised — it must never block the booking action that
@@ -67,13 +70,22 @@ def _event_body(booking):
     }
 
 
+def _target_mailbox(booking):
+    return (booking.room.email or ROOM_CALENDAR_EMAIL or "").strip()
+
+
 def create_event(booking):
-    """Returns the Graph event id on success, None on failure or when disabled."""
+    """Returns the Graph event id on success, None on failure, when disabled,
+    or when the room has no mailbox to sync to.
+    """
     if not CALENDAR_SYNC_ENABLED:
+        return None
+    mailbox = _target_mailbox(booking)
+    if not mailbox:
         return None
     try:
         resp = httpx.post(
-            "%s/users/%s/events" % (GRAPH_BASE, ROOM_CALENDAR_EMAIL),
+            "%s/users/%s/events" % (GRAPH_BASE, mailbox),
             headers={"Authorization": "Bearer %s" % _get_token()},
             json=_event_body(booking), timeout=15,
         )
@@ -84,13 +96,16 @@ def create_event(booking):
         return None
 
 
-def delete_event(event_id: str) -> bool:
+def delete_event(booking, event_id: str) -> bool:
     """Returns True on success (including "already gone"), False on failure."""
     if not CALENDAR_SYNC_ENABLED or not event_id:
         return False
+    mailbox = _target_mailbox(booking)
+    if not mailbox:
+        return False
     try:
         resp = httpx.delete(
-            "%s/users/%s/events/%s" % (GRAPH_BASE, ROOM_CALENDAR_EMAIL, event_id),
+            "%s/users/%s/events/%s" % (GRAPH_BASE, mailbox, event_id),
             headers={"Authorization": "Bearer %s" % _get_token()},
             timeout=15,
         )

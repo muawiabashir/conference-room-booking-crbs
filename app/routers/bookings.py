@@ -365,7 +365,7 @@ def cancel(booking_id: int, request: Request, reason: str = Form(""),
     db.commit()
     audit(db, request, user, "BOOKING_CANCELLED", "Booking", booking.reference, reason)
     message = "Booking %s cancelled; charges reversed." % booking.reference
-    if event_id and not graph.delete_event(event_id):
+    if event_id and not graph.delete_event(booking, event_id):
         message += " Calendar sync failed — check server logs."
     flash(request, "success", message)
     return RedirectResponse("/bookings/%d" % booking_id, status_code=303)
