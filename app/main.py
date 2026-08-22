@@ -61,7 +61,8 @@ def on_startup():
         Base.metadata.create_all(bind=engine, checkfirst=True)
 
     for args in [("users", "sso_subject", "VARCHAR(160)", True),
-                 ("bookings", "graph_event_id", "VARCHAR(200)", False)]:
+                 ("bookings", "graph_event_id", "VARCHAR(200)", False),
+                 ("rooms", "email", "VARCHAR(160)", False)]:
         try:
             _add_column_if_missing(args[0], args[1], args[2], unique=args[3])
         except (OperationalError, ProgrammingError):

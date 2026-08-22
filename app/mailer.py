@@ -33,6 +33,30 @@ def send_mail(to_email: str, subject: str, body: str) -> bool:
         return False
 
 
+def send_calendar_invite(to_email: str, subject: str, body: str, ics_text: str, ics_filename: str) -> bool:
+    """Same delivery contract as send_mail(), with the booking's .ics attached
+    so the recipient's mail client can add it to a personal calendar.
+    """
+    if not EMAIL_ENABLED:
+        return False
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = SMTP_FROM
+    msg["To"] = to_email
+    msg.set_content(body)
+    msg.add_attachment(ics_text.encode("utf-8"), maintype="text", subtype="calendar",
+                       filename=ics_filename)
+    try:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as server:
+            server.starttls()
+            server.login(SMTP_USERNAME, SMTP_PASSWORD)
+            server.send_message(msg)
+        return True
+    except (smtplib.SMTPException, OSError):
+        logger.exception("Failed to send calendar invite to %s", to_email)
+        return False
+
+
 def send_account_email(to_email: str, full_name: str, temp_password: str, login_url: str,
                        is_reset: bool) -> bool:
     action = "Your password has been reset" if is_reset else "An account has been created for you"

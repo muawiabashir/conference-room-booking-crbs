@@ -9,8 +9,9 @@ from ..config import CALENDAR_SYNC_ENABLED
 from ..database import get_db
 from .. import graph
 from ..ics import booking_ics
+from ..mailer import send_calendar_invite
 from ..models import (
-    Booking, BookingService, BookingStatus, Organization, Room, ServiceItem, utcnow,
+    Booking, BookingService, BookingStatus, Organization, Role, Room, ServiceItem, User, utcnow,
 )
 from ..pricing import quote
 from ..security import (
@@ -20,6 +21,44 @@ from ..templating import flash, render
 from ..workflow import find_conflicts, next_reference, validate_window
 
 router = APIRouter()
+
+
+def _booking_stakeholder_emails(db: Session, booking: Booking) -> list[str]:
+    addresses = set()
+    if booking.room.email:
+        addresses.add(booking.room.email.strip().lower())
+    if booking.organization.focal_point_email:
+        addresses.add(booking.organization.focal_point_email.strip().lower())
+    role_stmt = select(User.email).where(
+        User.role.in_([Role.FACILITY_MANAGER, Role.SYSTEM_ADMIN]), User.is_active.is_(True),
+    )
+    for email in db.scalars(role_stmt):
+        addresses.add(email.strip().lower())
+    return sorted(addresses)
+
+
+def _notify_booking_stakeholders(db: Session, booking: Booking):
+    recipients = _booking_stakeholder_emails(db, booking)
+    if not recipients:
+        return
+    subject = "Room booking: %s — %s" % (booking.reference, booking.title)
+    body = (
+        "A conference room booking has been submitted.\n\n"
+        "Reference: %s\n"
+        "Room: %s\n"
+        "Requested by: %s\n"
+        "Counterpart: %s\n"
+        "When: %s to %s\n"
+        "Status: %s (awaiting facility approval)\n\n"
+        "A calendar file is attached — add it to your calendar as a tentative hold.\n"
+    ) % (
+        booking.reference, booking.room.name, booking.requester.full_name,
+        booking.organization.name, booking.starts_at.strftime("%A %d %B %Y %H:%M"),
+        booking.ends_at.strftime("%H:%M"), booking.status.value.title(),
+    )
+    ics_text = booking_ics(booking)
+    for email in recipients:
+        send_calendar_invite(email, subject, body, ics_text, "%s.ics" % booking.reference)
 
 
 def _parse_dt(raw: str):
@@ -252,6 +291,8 @@ def _save_booking(request: Request, db: Session, user, form, booking):
           "Booking", booking.reference,
           "%s | %s | %s to %s | charge %.2f"
           % (title, room.name, starts_at, ends_at, booking.total_charge))
+    if creating:
+        _notify_booking_stakeholders(db, booking)
     flash(request, "success",
           "Booking %s %s and awaiting approval. Estimated cost recovery: %.2f."
           % (booking.reference, "created" if creating else "updated", booking.total_charge))

@@ -157,6 +157,7 @@ class Room(Base):
     code = mapped_column(String(30), unique=True, nullable=False)
     name = mapped_column(String(140), nullable=False)
     location = mapped_column(String(140), nullable=False, default="")
+    email = mapped_column(String(160), nullable=True)
     capacity = mapped_column(Integer, nullable=False, default=10)
     features = mapped_column(String(400), nullable=False, default="")  # comma separated
     rate_hourly = mapped_column(Float, nullable=False, default=0.0)

@@ -23,7 +23,8 @@ def rooms(request: Request, db: Session = Depends(get_db), user=Depends(current_
 
 @router.post("/rooms")
 async def save_room(request: Request, code: str = Form(...), name: str = Form(...),
-                    location: str = Form(""), capacity: int = Form(...), features: str = Form(""),
+                    location: str = Form(""), email: str = Form(""),
+                    capacity: int = Form(...), features: str = Form(""),
                     rate_hourly: float = Form(0), rate_half_day: float = Form(0),
                     rate_full_day: float = Form(0), room_id: str = Form(""),
                     photos: list[UploadFile] = File(default=[]),
@@ -39,6 +40,7 @@ async def save_room(request: Request, code: str = Form(...), name: str = Form(..
 
     room.name = name.strip()
     room.location = location.strip()
+    room.email = email.strip().lower() or None
     room.capacity = max(1, capacity)
     room.features = features.strip()
     room.rate_hourly = max(0.0, rate_hourly)

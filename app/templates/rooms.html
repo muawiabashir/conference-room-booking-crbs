@@ -48,7 +48,7 @@
               {% if can('room.manage') %}
               <td class="whitespace-nowrap">
                 <button type="button" class="btn btn-secondary btn-sm"
-                        onclick='loadRoom({{ {"id": r.id, "code": r.code, "name": r.name, "location": r.location, "capacity": r.capacity, "features": r.features, "rate_hourly": r.rate_hourly, "rate_half_day": r.rate_half_day, "rate_full_day": r.rate_full_day}|tojson }})'>Edit</button>
+                        onclick='loadRoom({{ {"id": r.id, "code": r.code, "name": r.name, "location": r.location, "email": r.email or "", "capacity": r.capacity, "features": r.features, "rate_hourly": r.rate_hourly, "rate_half_day": r.rate_half_day, "rate_full_day": r.rate_full_day}|tojson }})'>Edit</button>
                 <form method="post" action="/rooms/{{ r.id }}/toggle" class="inline">
                   <button type="submit" class="btn btn-secondary btn-sm">{{ 'Suspend' if r.is_active else 'Restore' }}</button>
                 </form>
@@ -78,6 +78,7 @@
       {{ ui.field('code', 'Room code', required=True, hint='Short unique identifier, e.g. CR-01') }}
       {{ ui.field('name', 'Room name', required=True) }}
       {{ ui.field('location', 'Location', hint='Building and floor') }}
+      {{ ui.field('email', 'Room email account', type='email', hint='Shared mailbox for this room, if it has one. Booking confirmations are sent here.') }}
       {{ ui.field('capacity', 'Seating capacity', value=20, type='number', required=True, attrs='min="1"') }}
       {{ ui.field('features', 'Features', hint='Comma separated, e.g. Projector, VC, Interpretation booths') }}
       <div class="pt-1"><div class="kpi-label">Rates ({{ currency }})</div></div>
@@ -131,7 +132,7 @@ function renderGallery(roomId) {
 
 function loadRoom(r) {
   document.getElementById('room_id').value = r.id;
-  ['code','name','location','capacity','features','rate_hourly','rate_half_day','rate_full_day']
+  ['code','name','location','email','capacity','features','rate_hourly','rate_half_day','rate_full_day']
     .forEach(function (k) { document.getElementById('f-' + k).value = r[k]; });
   document.getElementById('form-title').textContent = 'Edit ' + r.name;
   document.getElementById('f-code').readOnly = true;
