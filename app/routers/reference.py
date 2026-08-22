@@ -1,15 +1,17 @@
 """Rooms, service catalogue, counterparts and rate cards."""
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import ORG_TYPE_LABELS, OrgType, Organization, RateCard, Room, ServiceItem
+from ..models import ORG_TYPE_LABELS, OrgType, Organization, RateCard, Room, RoomImage, ServiceItem
 from ..security import audit, current_user, has_permission, require
 from ..templating import flash, render
 
 router = APIRouter()
+
+MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
 
 # ---------------------------------------------------------------- Rooms
@@ -20,11 +22,12 @@ def rooms(request: Request, db: Session = Depends(get_db), user=Depends(current_
 
 
 @router.post("/rooms")
-def save_room(request: Request, code: str = Form(...), name: str = Form(...),
-              location: str = Form(""), capacity: int = Form(...), features: str = Form(""),
-              rate_hourly: float = Form(0), rate_half_day: float = Form(0),
-              rate_full_day: float = Form(0), room_id: str = Form(""),
-              db: Session = Depends(get_db), user=Depends(require("room.manage"))):
+async def save_room(request: Request, code: str = Form(...), name: str = Form(...),
+                    location: str = Form(""), capacity: int = Form(...), features: str = Form(""),
+                    rate_hourly: float = Form(0), rate_half_day: float = Form(0),
+                    rate_full_day: float = Form(0), room_id: str = Form(""),
+                    photos: list[UploadFile] = File(default=[]),
+                    db: Session = Depends(get_db), user=Depends(require("room.manage"))):
     room = db.get(Room, int(room_id)) if room_id else None
     creating = room is None
     if creating:
@@ -41,12 +44,62 @@ def save_room(request: Request, code: str = Form(...), name: str = Form(...),
     room.rate_hourly = max(0.0, rate_hourly)
     room.rate_half_day = max(0.0, rate_half_day)
     room.rate_full_day = max(0.0, rate_full_day)
+    db.flush()
+
+    uploaded = 0
+    skipped = 0
+    position = (max((img.position for img in room.images), default=-1) + 1) if room.images else 0
+    for photo in photos:
+        if not photo or not photo.filename:
+            continue
+        content = await photo.read()
+        if not content:
+            continue
+        if not (photo.content_type or "").startswith("image/"):
+            skipped += 1
+            continue
+        if len(content) > MAX_IMAGE_BYTES:
+            skipped += 1
+            continue
+        db.add(RoomImage(room_id=room.id, content_type=photo.content_type,
+                         data=content, position=position))
+        position += 1
+        uploaded += 1
+
     db.commit()
 
     audit(db, request, user, "ROOM_CREATE" if creating else "ROOM_UPDATE", "Room", room.code,
           "%s | cap %d | %.2f/h, %.2f/half-day, %.2f/day"
           % (room.name, room.capacity, room.rate_hourly, room.rate_half_day, room.rate_full_day))
-    flash(request, "success", "Room %s saved." % room.name)
+    message = "Room %s saved." % room.name
+    if uploaded:
+        message += " %d photo(s) uploaded." % uploaded
+    if skipped:
+        message += " %d file(s) skipped (not an image or over 5 MB)." % skipped
+    flash(request, "success", message)
+    return RedirectResponse("/rooms", status_code=303)
+
+
+@router.get("/rooms/images/{image_id}")
+def room_image(image_id: int, db: Session = Depends(get_db)):
+    image = db.get(RoomImage, image_id)
+    if image is None:
+        raise HTTPException(404, "Image not found.")
+    return Response(content=image.data, media_type=image.content_type,
+                    headers={"Cache-Control": "public, max-age=86400"})
+
+
+@router.post("/rooms/images/{image_id}/delete")
+def delete_room_image(image_id: int, request: Request, db: Session = Depends(get_db),
+                      user=Depends(require("room.manage"))):
+    image = db.get(RoomImage, image_id)
+    if image is None:
+        raise HTTPException(404, "Image not found.")
+    room = image.room
+    db.delete(image)
+    db.commit()
+    audit(db, request, user, "ROOM_IMAGE_DELETE", "Room", room.code, "Removed a photo")
+    flash(request, "success", "Photo removed.")
     return RedirectResponse("/rooms", status_code=303)
 
 

@@ -83,6 +83,7 @@
             {% endfor %}
           </select>
         </div>
+        <div class="sm:col-span-3" id="room-gallery"></div>
         <div>
           <label class="field-label required" for="f-starts_at">Start</label>
           <input class="input" id="f-starts_at" name="starts_at" type="datetime-local" required
@@ -158,6 +159,49 @@
     </section>
   </div>
 </form>
+
+<script>
+var ROOM_IMAGES = {
+  {% for r in rooms %}
+  "{{ r.id }}": [{% for img in r.images %}{{ img.id }}{{ ',' if not loop.last }}{% endfor %}]{{ ',' if not loop.last }}
+  {% endfor %}
+};
+</script>
+
+<div id="lightbox" class="fixed inset-0 hidden items-center justify-center p-6" style="background:rgba(0,0,0,.85);z-index:60" onclick="closeLightbox()">
+  <img id="lightbox-img" src="" alt="" style="max-width:92vw;max-height:88vh;object-fit:contain;border-radius:4px">
+  <button type="button" class="btn btn-secondary btn-sm" style="position:absolute;top:16px;right:16px" onclick="closeLightbox()">{{ ui.icon('x', 14) }} Close</button>
+</div>
+
+<script>
+function openLightbox(id) {
+  document.getElementById('lightbox-img').src = '/rooms/images/' + id;
+  var lb = document.getElementById('lightbox');
+  lb.classList.remove('hidden');
+  lb.classList.add('flex');
+}
+function closeLightbox() {
+  var lb = document.getElementById('lightbox');
+  lb.classList.add('hidden');
+  lb.classList.remove('flex');
+}
+function renderRoomGallery() {
+  var roomId = document.getElementById('f-room_id').value;
+  var wrap = document.getElementById('room-gallery');
+  var ids = ROOM_IMAGES[roomId] || [];
+  if (!ids.length) { wrap.innerHTML = ''; return; }
+  var html = '<div class="flex gap-2 flex-wrap mt-1 mb-2">';
+  ids.forEach(function (id) {
+    html += '<img src="/rooms/images/' + id + '" alt="Room photo" ' +
+            'class="w-20 h-16 rounded object-cover cursor-pointer" ' +
+            'style="border:1px solid var(--undp-gray-200)" onclick="openLightbox(' + id + ')">';
+  });
+  html += '</div>';
+  wrap.innerHTML = html;
+}
+document.getElementById('f-room_id').addEventListener('change', renderRoomGallery);
+renderRoomGallery();
+</script>
 
 <script>
 (function () {

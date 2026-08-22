@@ -2,7 +2,8 @@ from datetime import datetime, timezone
 import enum
 
 from sqlalchemy import (
-    Boolean, DateTime, Enum, Float, ForeignKey, Integer, String, Text, UniqueConstraint,
+    Boolean, DateTime, Enum, Float, ForeignKey, Integer, LargeBinary, String, Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import mapped_column, relationship
 
@@ -163,9 +164,30 @@ class Room(Base):
     rate_full_day = mapped_column(Float, nullable=False, default=0.0)
     is_active = mapped_column(Boolean, nullable=False, default=True)
 
+    images = relationship(
+        "RoomImage", order_by="RoomImage.position", back_populates="room",
+        cascade="all, delete-orphan",
+    )
+
     @property
     def feature_list(self):
         return [f.strip() for f in self.features.split(",") if f.strip()]
+
+
+class RoomImage(Base):
+    """A photo of a room, stored in the database (not the filesystem) so it
+    survives redeploys on hosts with ephemeral local storage, e.g. Render.
+    """
+    __tablename__ = "room_images"
+
+    id = mapped_column(Integer, primary_key=True)
+    room_id = mapped_column(ForeignKey("rooms.id"), nullable=False)
+    content_type = mapped_column(String(100), nullable=False)
+    data = mapped_column(LargeBinary, nullable=False)
+    position = mapped_column(Integer, nullable=False, default=0)
+    created_at = mapped_column(DateTime, nullable=False, default=utcnow)
+
+    room = relationship("Room", back_populates="images")
 
 
 class ServiceItem(Base):
