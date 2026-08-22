@@ -21,7 +21,11 @@
         <div class="text-[10px] truncate" style="color:#8FAEC6">{{ org_name }} · {{ duty_station }}</div>
       </div>
     </div>
-    <a href="/login?next=/calendar" class="btn btn-primary btn-sm shrink-0">Sign in to book</a>
+    <div class="flex items-center gap-2 shrink-0">
+      <a href="webcal://{{ request.url.hostname }}{{ request.url_for('public_calendar_feed').path }}"
+         class="btn btn-secondary btn-sm">{{ ui.icon('calendar', 14) }} Subscribe</a>
+      <a href="/login?next=/calendar" class="btn btn-primary btn-sm">Sign in to book</a>
+    </div>
   </div>
   <div class="undp-accent-rule"></div>
 
@@ -33,6 +37,10 @@
           <p class="text-[12px] mt-0.5" style="color:var(--undp-gray-500)">
             {{ target.strftime('%A, %d %B %Y') }} · {{ tz_label }} · shows free/busy only —
             <a href="/login?next=/calendar" style="color:var(--undp-blue)">sign in</a> for meeting details or to request a room
+          </p>
+          <p class="text-[11px] mt-1" style="color:var(--undp-gray-500)">
+            Subscribe in Outlook/Google/Apple Calendar with:
+            <code class="font-mono select-all" style="color:var(--undp-blue-dark)">{{ request.url_for('public_calendar_feed') }}</code>
           </p>
         </div>
         <div class="flex items-center gap-2">

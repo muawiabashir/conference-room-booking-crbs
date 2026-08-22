@@ -7,12 +7,13 @@ a future template edit gone careless.
 """
 from datetime import date, datetime, timedelta
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from ..config import DUTY_STATION, ORGANISATION_NAME, TIMEZONE_LABEL
 from ..database import get_db
+from ..ics import availability_feed_ics
 from ..models import ACTIVE_BOOKING_STATUSES, Booking, Room
 from ..templating import templates
 
@@ -20,6 +21,8 @@ router = APIRouter()
 
 DAY_START_HOUR = 8
 DAY_END_HOUR = 19
+FEED_PAST_DAYS = 7
+FEED_FUTURE_DAYS = 180
 
 
 @router.get("/public/calendar")
@@ -63,3 +66,19 @@ def public_calendar(request: Request, day: str = "", db: Session = Depends(get_d
         "today": date.today().isoformat(),
         "org_name": ORGANISATION_NAME, "duty_station": DUTY_STATION, "tz_label": TIMEZONE_LABEL,
     })
+
+
+@router.get("/public/calendar.ics", name="public_calendar_feed")
+def public_calendar_feed(db: Session = Depends(get_db)):
+    window_start = datetime.combine(date.today() - timedelta(days=FEED_PAST_DAYS), datetime.min.time())
+    window_end = datetime.combine(date.today() + timedelta(days=FEED_FUTURE_DAYS), datetime.min.time())
+    stmt = select(Booking).where(
+        and_(Booking.starts_at < window_end, Booking.ends_at > window_start,
+             Booking.status.in_(ACTIVE_BOOKING_STATUSES))
+    )
+    bookings = list(db.scalars(stmt))
+    return Response(
+        content=availability_feed_ics(bookings),
+        media_type="text/calendar",
+        headers={"Content-Disposition": 'inline; filename="room-availability.ics"'},
+    )

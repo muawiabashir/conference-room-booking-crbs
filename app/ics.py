@@ -68,3 +68,38 @@ def booking_ics(booking):
         "END:VCALENDAR",
     ]
     return "\r\n".join(lines) + "\r\n"
+
+
+def availability_feed_ics(bookings):
+    """Subscribable free/busy feed for all rooms combined — no meeting titles,
+    purpose, counterpart or requester, matching the public calendar page's
+    privacy stance. Meant to be added as an internet calendar subscription
+    (webcal) in Outlook/Google/Apple, refreshed periodically by the calendar
+    app itself rather than pushed.
+    """
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//UNDP Conference Room Booking & Cost Recovery//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+        "X-WR-CALNAME:Conference room availability",
+        "REFRESH-INTERVAL;VALUE=DURATION:PT1H",
+        "X-PUBLISHED-TTL:PT1H",
+    ]
+    for booking in bookings:
+        confirmed = booking.status.value in ("APPROVED", "COMPLETED")
+        lines += [
+            "BEGIN:VEVENT",
+            "UID:availability-%d@crbs.undp" % booking.id,
+            "DTSTAMP:%s" % _stamp_utc(utcnow()),
+            "DTSTART:%s" % _stamp_utc(booking.starts_at),
+            "DTEND:%s" % _stamp_utc(booking.ends_at),
+            _fold("SUMMARY:%s" % _escape("Busy – %s" % booking.room.name)),
+            _fold("LOCATION:%s" % _escape(booking.room.name)),
+            "STATUS:%s" % ("CONFIRMED" if confirmed else "TENTATIVE"),
+            "TRANSP:OPAQUE",
+            "END:VEVENT",
+        ]
+    lines.append("END:VCALENDAR")
+    return "\r\n".join(lines) + "\r\n"
