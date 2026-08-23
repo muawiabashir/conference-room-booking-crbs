@@ -97,7 +97,7 @@
         <span class="rotate-180 flex shrink-0" style="color:var(--undp-gray-300)">{{ ui.icon('arrow-left', 16) }}</span>
       </a>
 
-      <a href="webcal://{{ request.url.hostname }}{{ request.url_for('public_calendar_feed').path }}"
+      <a href="{{ webcal_url(request, '/public/calendar.ics') }}"
          class="card card-interactive mt-2.5 p-3.5 flex items-center gap-3" style="text-decoration:none">
         <span class="card-title-icon" style="width:38px;height:38px">{{ ui.icon('download', 18) }}</span>
         <span class="flex-1 min-w-0">
@@ -109,7 +109,7 @@
       <p class="mt-2 text-[11px]" style="color:var(--undp-gray-500)">
         Doesn't open your calendar app? Copy this URL and add it manually
         ("Subscribe from web" / "From URL"):
-        <code class="font-mono select-all block mt-0.5" style="color:var(--undp-blue-dark);word-break:break-all">{{ request.url_for('public_calendar_feed') }}</code>
+        <code class="font-mono select-all block mt-0.5" style="color:var(--undp-blue-dark);word-break:break-all">{{ public_url(request, '/public/calendar.ics') }}</code>
       </p>
 
       {% if show_demo_credentials %}

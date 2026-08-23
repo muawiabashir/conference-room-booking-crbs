@@ -4,7 +4,8 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
 
 from .config import (
-    BASE_DIR, CURRENCY, DUTY_STATION, ORGANISATION_NAME, SHOW_DEMO_CREDENTIALS, TIMEZONE_LABEL,
+    BASE_DIR, CURRENCY, DUTY_STATION, ORGANISATION_NAME, PUBLIC_BASE_URL, SHOW_DEMO_CREDENTIALS,
+    TIMEZONE_LABEL,
 )
 from .models import ORG_TYPE_LABELS, Booking, BookingStatus
 from .security import has_permission
@@ -15,6 +16,26 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 # where a parent-template `{% import %}` would not be in scope.
 templates.env.globals["ui"] = templates.env.get_template("macros.html").module
 templates.env.globals["show_demo_credentials"] = SHOW_DEMO_CREDENTIALS
+
+
+def public_url(request, path):
+    """Absolute URL for `path`, correct even when the app is reverse-proxied
+    under a path prefix (see PUBLIC_BASE_URL) — request.base_url alone would
+    omit that prefix, since the app never sees it.
+    """
+    base = PUBLIC_BASE_URL or str(request.base_url).rstrip("/")
+    return base + path
+
+
+def webcal_url(request, path):
+    """Same as public_url(), but with the webcal:// scheme calendar apps use
+    to recognise a subscribable feed."""
+    url = public_url(request, path)
+    return "webcal://" + url.split("://", 1)[1]
+
+
+templates.env.globals["public_url"] = public_url
+templates.env.globals["webcal_url"] = webcal_url
 
 
 def flash(request: Request, level: str = None, message: str = None):

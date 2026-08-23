@@ -10,6 +10,13 @@ DATABASE_URL = os.getenv("CRBS_DATABASE_URL", "sqlite:///" + str(PROJECT_ROOT / 
 ENVIRONMENT = os.getenv("CRBS_ENV", "development").strip().lower()
 IS_PRODUCTION = ENVIRONMENT == "production"
 
+# Overrides request.base_url when the app is reverse-proxied under a path
+# prefix (e.g. nginx serving it at /crbs/ alongside another app) — the app
+# itself never sees that prefix, so links built from the request alone
+# would point at the wrong URL. Leave unset when the app owns its domain
+# outright (e.g. Render), where request.base_url is already correct.
+PUBLIC_BASE_URL = os.getenv("CRBS_PUBLIC_BASE_URL", "").strip().rstrip("/")
+
 
 def _load_secret_key():
     key = os.getenv("CRBS_SECRET_KEY")

@@ -23,7 +23,7 @@
       </div>
     </div>
     <div class="flex items-center gap-2 shrink-0">
-      <a href="webcal://{{ request.url.hostname }}{{ request.url_for('public_calendar_feed').path }}"
+      <a href="{{ webcal_url(request, '/public/calendar.ics') }}"
          class="btn btn-secondary btn-sm">{{ ui.icon('calendar', 14) }} Subscribe</a>
       <a href="/login?next=/calendar" class="btn btn-primary btn-sm">Sign in to book</a>
     </div>
@@ -41,7 +41,7 @@
           </p>
           <p class="text-[11px] mt-1" style="color:var(--undp-gray-500)">
             Subscribe in Outlook/Google/Apple Calendar with:
-            <code class="font-mono select-all" style="color:var(--undp-blue-dark)">{{ request.url_for('public_calendar_feed') }}</code>
+            <code class="font-mono select-all" style="color:var(--undp-blue-dark)">{{ public_url(request, '/public/calendar.ics') }}</code>
           </p>
         </div>
         <div class="flex items-center gap-2">

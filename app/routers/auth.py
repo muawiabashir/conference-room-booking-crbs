@@ -4,7 +4,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..config import CURRENCY, DUTY_STATION, ORGANISATION_NAME, SSO_ENABLED
+from ..config import CURRENCY, DUTY_STATION, ORGANISATION_NAME, PUBLIC_BASE_URL, SSO_ENABLED
 from ..database import get_db
 from ..models import User, utcnow
 from ..security import (
@@ -49,7 +49,8 @@ async def microsoft_login(request: Request, next: str = "/"):
     if not SSO_ENABLED:
         raise HTTPException(status_code=404)
     request.session["sso_next"] = next if next.startswith("/") else "/"
-    redirect_uri = str(request.url_for("microsoft_callback"))
+    redirect_uri = (PUBLIC_BASE_URL + "/auth/microsoft/callback" if PUBLIC_BASE_URL
+                    else str(request.url_for("microsoft_callback")))
     return await oauth.microsoft.authorize_redirect(request, redirect_uri)
 
 

@@ -6,7 +6,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..config import EMAIL_ENABLED
+from ..config import EMAIL_ENABLED, PUBLIC_BASE_URL
 from ..database import get_db
 from ..mailer import send_account_email
 from ..models import AuditLog, Organization, Role, User
@@ -22,7 +22,7 @@ def _issue_credentials(request, db, actor, target, temp_password, audit_action, 
                        is_reset):
     """Email the temporary password if SMTP is configured, else fall back to
     showing it on-screen to the admin — same behaviour as before this existed."""
-    login_url = str(request.base_url).rstrip("/") + "/login"
+    login_url = (PUBLIC_BASE_URL or str(request.base_url).rstrip("/")) + "/login"
     emailed = EMAIL_ENABLED and send_account_email(
         target.email, target.full_name, temp_password, login_url, is_reset)
 
