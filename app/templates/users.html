@@ -57,6 +57,10 @@
                   <button type="submit" class="btn {{ 'btn-danger' if u.is_active else 'btn-secondary' }} btn-sm">
                     {{ 'Disable' if u.is_active else 'Enable' }}</button>
                 </form>
+                <form method="post" action="/admin/users/{{ u.id }}/delete" class="inline"
+                      onsubmit="return confirm('Permanently delete {{ u.email }}? This cannot be undone. Only possible if they have no bookings or invoices on record.');">
+                  <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                </form>
               </td>
             </tr>
           {% endfor %}

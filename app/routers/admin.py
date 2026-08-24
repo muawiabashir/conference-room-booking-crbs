@@ -3,13 +3,13 @@ import secrets
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..config import EMAIL_ENABLED, PUBLIC_BASE_URL
 from ..database import get_db
 from ..mailer import send_account_email
-from ..models import AuditLog, Organization, Role, User
+from ..models import AuditLog, Booking, Invoice, Organization, Role, User
 from ..security import (
     PERMISSION_DESCRIPTIONS, PERMISSIONS, audit, hash_password, require,
 )
@@ -122,6 +122,53 @@ def toggle_user(user_id: int, request: Request, db: Session = Depends(get_db),
           "Account %s" % ("enabled" if target.is_active else "disabled"))
     flash(request, "success", "%s has been %s."
           % (target.full_name, "re-enabled" if target.is_active else "disabled"))
+    return RedirectResponse("/admin/users", status_code=303)
+
+
+@router.post("/admin/users/{user_id}/delete")
+def delete_user(user_id: int, request: Request, db: Session = Depends(get_db),
+                user=Depends(require("user.manage"))):
+    target = db.get(User, user_id)
+    if target is None:
+        raise HTTPException(404, "User not found.")
+    if target.id == user.id:
+        flash(request, "error", "You cannot delete your own account.")
+        return RedirectResponse("/admin/users", status_code=303)
+
+    if target.role == Role.SYSTEM_ADMIN:
+        other_admins = db.scalar(
+            select(func.count()).select_from(User)
+            .where(User.role == Role.SYSTEM_ADMIN, User.is_active.is_(True), User.id != target.id)
+        )
+        if not other_admins:
+            flash(request, "error", "Cannot delete the only active System Administrator.")
+            return RedirectResponse("/admin/users", status_code=303)
+
+    has_bookings = db.scalar(
+        select(func.count()).select_from(Booking).where(Booking.requester_id == target.id)
+    )
+    has_invoices = db.scalar(
+        select(func.count()).select_from(Invoice).where(Invoice.created_by_id == target.id)
+    )
+    if has_bookings or has_invoices:
+        flash(request, "error",
+              "%s has %d booking(s) and %d invoice(s) on record — deleting would break that "
+              "history. Disable the account instead to revoke access while keeping it."
+              % (target.full_name, has_bookings, has_invoices))
+        return RedirectResponse("/admin/users", status_code=303)
+
+    email, full_name = target.email, target.full_name
+    db.execute(
+        AuditLog.__table__.update().where(AuditLog.actor_id == target.id).values(actor_id=None)
+    )
+    db.execute(
+        Booking.__table__.update().where(Booking.decided_by_id == target.id)
+        .values(decided_by_id=None)
+    )
+    db.delete(target)
+    db.commit()
+    audit(db, request, user, "USER_DELETE", "User", email, "Deleted account for %s" % full_name)
+    flash(request, "success", "%s's account has been permanently deleted." % full_name)
     return RedirectResponse("/admin/users", status_code=303)
 
 
