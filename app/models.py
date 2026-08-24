@@ -211,6 +211,7 @@ class Booking(Base):
     reference = mapped_column(String(30), unique=True, nullable=False, index=True)
     title = mapped_column(String(200), nullable=False)
     purpose = mapped_column(Text, nullable=False, default="")
+    remark = mapped_column(Text, nullable=False, default="")  # seating arrangement, etc.
     room_id = mapped_column(ForeignKey("rooms.id"), nullable=False)
     organization_id = mapped_column(ForeignKey("organizations.id"), nullable=False)
     requester_id = mapped_column(ForeignKey("users.id"), nullable=False)

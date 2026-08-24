@@ -60,6 +60,8 @@ def _event_body(booking):
     ]
     if booking.purpose:
         lines.append("Purpose: %s" % booking.purpose)
+    if booking.remark:
+        lines.append("Remark — seating arrangement: %s" % booking.remark)
     return {
         "subject": "%s — %s (%s)" % (booking.title, booking.room.name, booking.reference),
         "body": {"contentType": "text", "content": "\n".join(lines)},

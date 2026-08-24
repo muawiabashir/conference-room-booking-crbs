@@ -46,6 +46,8 @@ def booking_ics(booking):
     ]
     if booking.purpose:
         desc_lines.append("Purpose: %s" % booking.purpose)
+    if booking.remark:
+        desc_lines.append("Remark — seating arrangement: %s" % booking.remark)
     if not confirmed:
         desc_lines.append("Status: awaiting facility approval — this hold is not yet confirmed.")
 

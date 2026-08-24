@@ -43,6 +43,9 @@
         {% if booking.purpose %}
           <div class="sm:col-span-2"><dt class="kpi-label">Purpose</dt><dd class="mt-0.5">{{ booking.purpose }}</dd></div>
         {% endif %}
+        {% if booking.remark %}
+          <div class="sm:col-span-2"><dt class="kpi-label">Remark — seating arrangement</dt><dd class="mt-0.5">{{ booking.remark }}</dd></div>
+        {% endif %}
         {% if booking.decided_by %}
           <div class="sm:col-span-2"><dt class="kpi-label">Decision</dt>
             <dd class="mt-0.5">{{ booking.status.value|title }} by {{ booking.decided_by.full_name }}

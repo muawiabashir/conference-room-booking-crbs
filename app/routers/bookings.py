@@ -49,13 +49,15 @@ def _notify_booking_stakeholders(db: Session, booking: Booking):
         "Requested by: %s\n"
         "Counterpart: %s\n"
         "When: %s to %s\n"
-        "Status: %s (awaiting facility approval)\n\n"
-        "A calendar file is attached — add it to your calendar as a tentative hold.\n"
+        "Status: %s (awaiting facility approval)\n"
     ) % (
         booking.reference, booking.room.name, booking.requester.full_name,
         booking.organization.name, booking.starts_at.strftime("%A %d %B %Y %H:%M"),
         booking.ends_at.strftime("%H:%M"), booking.status.value.title(),
     )
+    if booking.remark:
+        body += "Remark — seating arrangement: %s\n" % booking.remark
+    body += "\nA calendar file is attached — add it to your calendar as a tentative hold.\n"
     ics_text = booking_ics(booking)
     for email in recipients:
         send_calendar_invite(email, subject, body, ics_text, "%s.ics" % booking.reference)
@@ -184,6 +186,7 @@ def _save_booking(request: Request, db: Session, user, form, booking):
     errors = []
     title = (form.get("title") or "").strip()
     purpose = (form.get("purpose") or "").strip()
+    remark = (form.get("remark") or "").strip()
     room_id = form.get("room_id")
     org_id = form.get("organization_id")
     starts_at = _parse_dt(form.get("starts_at"))
@@ -266,6 +269,7 @@ def _save_booking(request: Request, db: Session, user, form, booking):
 
     booking.title = title
     booking.purpose = purpose
+    booking.remark = remark
     booking.room_id = room.id
     booking.organization_id = organization.id
     booking.starts_at = starts_at

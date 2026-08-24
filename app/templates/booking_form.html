@@ -41,6 +41,11 @@
           <textarea class="input" id="f-purpose" name="purpose" rows="2"
                     placeholder="Brief description, used for utilisation reporting">{{ val('purpose', booking.purpose if editing else '') }}</textarea>
         </div>
+        <div class="sm:col-span-2">
+          <label class="field-label" for="f-remark">Remark — seating arrangement</label>
+          <textarea class="input" id="f-remark" name="remark" rows="2"
+                    placeholder="e.g. Theatre style, U-shape, boardroom, classroom…">{{ val('remark', booking.remark if editing else '') }}</textarea>
+        </div>
         <div>
           <label class="field-label required" for="f-organization_id">Counterpart to be charged</label>
           <select class="input" id="f-organization_id" name="organization_id" required>

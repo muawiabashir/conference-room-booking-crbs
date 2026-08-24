@@ -62,7 +62,8 @@ def on_startup():
 
     for args in [("users", "sso_subject", "VARCHAR(160)", True),
                  ("bookings", "graph_event_id", "VARCHAR(200)", False),
-                 ("rooms", "email", "VARCHAR(160)", False)]:
+                 ("rooms", "email", "VARCHAR(160)", False),
+                 ("bookings", "remark", "TEXT", False)]:
         try:
             _add_column_if_missing(args[0], args[1], args[2], unique=args[3])
         except (OperationalError, ProgrammingError):
