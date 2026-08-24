@@ -100,8 +100,26 @@
                  value="{{ val('ends_at', booking.ends_at.strftime('%Y-%m-%dT%H:%M') if editing else '') }}">
         </div>
         <div class="flex items-end">
-          <p class="field-hint">Maximum 12 hours. A 15-minute set-up gap is enforced either side.</p>
+          <p class="field-hint">Maximum 12 hours. A 15-minute set-up gap is enforced either side. Same-day requests are welcome.</p>
         </div>
+        <script>
+        (function () {
+          // Floors the pickers at "now" (in the visitor's own timezone) so a stray
+          // click can't land on a past date, without stopping same-day/last-minute
+          // requests — the server enforces the real ceiling on how far ahead is allowed.
+          var pad = function (n) { return String(n).padStart(2, '0'); };
+          var now = new Date();
+          var nowLocal = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate())
+                        + 'T' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+          var startInput = document.getElementById('f-starts_at');
+          var endInput = document.getElementById('f-ends_at');
+          if (!startInput.value) { startInput.min = nowLocal; }
+          startInput.addEventListener('change', function () {
+            endInput.min = startInput.value || nowLocal;
+          });
+          if (startInput.value) { endInput.min = startInput.value; }
+        })();
+        </script>
       </div>
     </section>
 

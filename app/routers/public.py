@@ -28,9 +28,9 @@ FEED_FUTURE_DAYS = 180
 @router.get("/public/calendar")
 def public_calendar(request: Request, day: str = "", db: Session = Depends(get_db)):
     try:
-        target = datetime.strptime(day, "%Y-%m-%d").date() if day else date.today()
+        target = datetime.strptime(day, "%Y-%m-%d").date() if day else date.today() + timedelta(days=1)
     except ValueError:
-        target = date.today()
+        target = date.today() + timedelta(days=1)
 
     start = datetime.combine(target, datetime.min.time())
     end = start + timedelta(days=1)
