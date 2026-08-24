@@ -1,12 +1,12 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..config import CALENDAR_SYNC_ENABLED
-from ..database import get_db
+from ..database import SessionLocal, get_db
 from .. import graph
 from ..ics import booking_ics
 from ..mailer import send_calendar_invite
@@ -35,6 +35,22 @@ def _booking_stakeholder_emails(db: Session, booking: Booking) -> list[str]:
     for email in db.scalars(role_stmt):
         addresses.add(email.strip().lower())
     return sorted(addresses)
+
+
+def _notify_booking_stakeholders_task(booking_id: int):
+    # Runs after the response is sent (see BackgroundTasks below) — SMTP is
+    # blocking and slow enough, especially with several recipients, that
+    # doing it inline risked exceeding gunicorn's worker timeout and
+    # crashing the whole request with a 502. Opens its own session rather
+    # than reusing the request's, which may already be closed by the time
+    # this runs.
+    db = SessionLocal()
+    try:
+        booking = db.get(Booking, booking_id)
+        if booking is not None:
+            _notify_booking_stakeholders(db, booking)
+    finally:
+        db.close()
 
 
 def _notify_booking_stakeholders(db: Session, booking: Booking):
@@ -123,10 +139,11 @@ def new_booking(request: Request, db: Session = Depends(get_db),
 
 
 @router.post("/bookings/new")
-async def create_booking(request: Request, db: Session = Depends(get_db),
+async def create_booking(request: Request, background_tasks: BackgroundTasks,
+                         db: Session = Depends(get_db),
                          user=Depends(require("booking.create"))):
     form = await request.form()
-    return _save_booking(request, db, user, form, booking=None)
+    return _save_booking(request, db, user, form, booking=None, background_tasks=background_tasks)
 
 
 @router.get("/bookings/{booking_id}")
@@ -182,7 +199,7 @@ async def update_booking(booking_id: int, request: Request, db: Session = Depend
     return _save_booking(request, db, user, form, booking=booking)
 
 
-def _save_booking(request: Request, db: Session, user, form, booking):
+def _save_booking(request: Request, db: Session, user, form, booking, background_tasks=None):
     errors = []
     title = (form.get("title") or "").strip()
     purpose = (form.get("purpose") or "").strip()
@@ -295,8 +312,8 @@ def _save_booking(request: Request, db: Session, user, form, booking):
           "Booking", booking.reference,
           "%s | %s | %s to %s | charge %.2f"
           % (title, room.name, starts_at, ends_at, booking.total_charge))
-    if creating:
-        _notify_booking_stakeholders(db, booking)
+    if creating and background_tasks is not None:
+        background_tasks.add_task(_notify_booking_stakeholders_task, booking.id)
     flash(request, "success",
           "Booking %s %s and awaiting approval. Estimated cost recovery: %.2f."
           % (booking.reference, "created" if creating else "updated", booking.total_charge))
