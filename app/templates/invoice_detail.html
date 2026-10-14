@@ -11,7 +11,7 @@
 {% endblock %}
 
 {% block content %}
-<section class="card">
+<section class="card invoice-sheet">
   <div class="undp-accent-rule"></div>
   <div class="p-6">
     <div class="flex flex-wrap justify-between gap-6 pb-6 border-b" style="border-color:var(--undp-gray-200)">
@@ -98,7 +98,7 @@
     </div>
 
     <div class="flex justify-end mt-5">
-      <dl class="w-full sm:w-80 space-y-2 text-[13px]">
+      <dl class="w-full sm:w-80 space-y-2 text-[13px] invoice-totals">
         <div class="flex justify-between"><dt>Direct cost subtotal</dt>
           <dd class="num">{{ currency }} {{ '{:,.2f}'.format(invoice.subtotal) }}</dd></div>
         <div class="flex justify-between"><dt>Management fee</dt>

@@ -236,6 +236,31 @@ table.data td.right, table.data th.right { text-align: right; }
 }
 
 @media print {
+  @page { size: A4; margin: 14mm 12mm; }
+
   .no-print { display: none !important; }
-  body { background: #fff; }
+  html, body { background: #fff; }
+  body { font-size: 11.5px; }
+
+  /* Collapse the dashboard shell so the invoice sheet owns the full page
+     instead of sitting in a flex column sized for the (now-hidden) sidebar. */
+  .flex.min-h-screen { display: block; }
+  main#main { padding: 0; }
+
+  .invoice-sheet {
+    border: none; box-shadow: none; border-radius: 0;
+  }
+
+  /* The line-items table scrolls on screen; on paper there is no scrollbar,
+     so anything past the old fixed width was being clipped off the page. */
+  .invoice-sheet .overflow-x-auto { overflow: visible; }
+
+  .invoice-sheet table.data { font-size: 10.5px; }
+  .invoice-sheet table.data thead th { position: static; padding: 6px 8px; }
+  .invoice-sheet table.data tbody td { padding: 6px 8px; }
+  .invoice-sheet table.data thead { display: table-header-group; }
+  .invoice-sheet table.data tr { page-break-inside: avoid; }
+
+  .invoice-sheet,
+  .invoice-totals { page-break-inside: avoid; }
 }
